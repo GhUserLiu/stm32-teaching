@@ -1,0 +1,262 @@
+{
+  "_comment": "v2.6.0 增强版评分标准 - 支持抄袭自动扣分、代码深度分析、图片质量检测",
+  "experiment_name": "汽车档位模拟器设计",
+  "experiment_code": "07_car_gear_experiment",
+  "class": "汽服2302B班",
+  "course_name": "汽车微处理器原理与应用",
+  "version": "2.6.0",
+  "total_points": 100,
+  "grading_scale": {
+    "A": {"min": 90, "max": 100, "label": "优"},
+    "B": {"min": 80, "max": 89.9, "label": "良"},
+    "C": {"min": 70, "max": 79.9, "label": "中"},
+    "D": {"min": 60, "max": 69.9, "label": "及格"},
+    "F": {"min": 0, "max": 59.9, "label": "不及格"}
+  },
+  "categories": [
+    {
+      "id": "team_collaboration",
+      "name": "团队协作",
+      "points": 5,
+      "grading_method": "keyword",
+      "description": "从报告一、团队信息与分工评估团队协作情况",
+      "source_section": "一、团队信息与分工",
+      "criteria": [
+        {
+          "description": "成员基本信息完整",
+          "points": 1,
+          "keywords": ["成员", "学号", "姓名", "基本信息", "组号"]
+        },
+        {
+          "description": "个人分工明确合理",
+          "points": 2,
+          "keywords": ["分工", "负责", "任务", "职责", "承担"]
+        },
+        {
+          "description": "协作过程记录详细",
+          "points": 2,
+          "keywords": ["协作", "过程", "讨论", "配合", "记录", "会议"]
+        }
+      ]
+    },
+    {
+      "id": "team_leader_bonus",
+      "name": "组长加分",
+      "points": 5,
+      "grading_method": "conditional",
+      "description": "担任组长的学生获得5分加分",
+      "conditional": true,
+      "condition": "is_team_leader"
+    },
+    {
+      "id": "attitude",
+      "name": "实验态度",
+      "points": 10,
+      "grading_method": "manual",
+      "description": "由教师根据考勤记录评定",
+      "default_points": 6,
+      "grading_rules": {
+        "full_attendance": 10,
+        "absent_once": 5,
+        "absent_twice_or_more": 0
+      }
+    },
+    {
+      "id": "principle_understanding",
+      "name": "实验原理与认知",
+      "points": 10,
+      "grading_method": "keyword",
+      "description": "从报告二、实验目的与原理评估原理理解",
+      "source_section": "二、实验目的与原理",
+      "criteria": [
+        {
+          "description": "实验目的清晰完整",
+          "points": 3,
+          "keywords": ["实验目的", "目标", "预期", "成果"]
+        },
+        {
+          "description": "实验原理阐述准确",
+          "points": 4,
+          "keywords": ["实验原理", "基本原理", "外部中断", "DWT", "消抖", "状态机", "GPIO"]
+        },
+        {
+          "description": "汽车电子应用场景说明",
+          "points": 3,
+          "keywords": ["汽车电子", "应用", "场景", "背景", "TCU", "ECU", "档位传感器"]
+        }
+      ]
+    },
+    {
+      "id": "completion",
+      "name": "实验完成度",
+      "points": 35,
+      "grading_method": "keyword",
+      "description": "从报告三、硬件设计与连接和五、实验结果分析评估",
+      "source_section": "三（15分）+ 五（20分）",
+      "criteria": [
+        {
+          "description": "硬件连接图正确清晰（三）",
+          "points": 10,
+          "keywords": ["连接图", "接线图", "硬件图", "电路图", "原理图"]
+        },
+        {
+          "description": "引脚配置说明完整（三）",
+          "points": 3,
+          "keywords": ["PE4", "PF9", "PF10", "GPIO", "引脚", "配置", "说明"]
+        },
+        {
+          "description": "ISP烧录电路说明（三）",
+          "points": 2,
+          "keywords": ["ISP", "烧录", "下载", "CH340"]
+        },
+        {
+          "description": "实验现象记录完整（五）",
+          "points": 8,
+          "keywords": ["实验现象", "测试", "演示", "现象", "LED状态", "档位"]
+        },
+        {
+          "description": "结果照片或截图清晰（五）",
+          "points": 4,
+          "keywords": ["照片", "截图", "图片", "图"]
+        },
+        {
+          "description": "结果对比分析透彻（五）",
+          "points": 8,
+          "keywords": ["结果分析", "对比", "预期", "差异", "分析"]
+        }
+      ]
+    },
+    {
+      "id": "code_quality",
+      "name": "代码质量",
+      "points": 30,
+      "grading_method": "enhanced_code_analysis",
+      "description": "v2.6.0 增强：代码质量深度分析",
+      "source_section": "四、软件设计与实现",
+      "sub_checks": {
+        "flowchart": {
+          "points": 6,
+          "check_type": "keyword",
+          "keywords": ["流程图", "软件流程", "程序流程", "框图"]
+        },
+        "code_completeness": {
+          "points": 8,
+          "check_type": "code_presence",
+          "required_elements": ["GPIO", "HAL_GPIO", "中断", "EXTI"]
+        },
+        "comments": {
+          "points": 8,
+          "check_type": "comment_ratio",
+          "min_ratio": 0.15,
+          "min_absolute": 5
+        },
+        "modularity": {
+          "points": 4,
+          "check_type": "function_count",
+          "min_functions": 3
+        },
+        "naming": {
+          "points": 4,
+          "check_type": "naming_convention",
+          "check_macros": true
+        }
+      }
+    },
+    {
+      "id": "image_evidence",
+      "name": "图片证据",
+      "points": 5,
+      "grading_method": "image_detection",
+      "description": "v2.6.0 新增：图片数量检测",
+      "min_images": 3,
+      "scoring_rules": {
+        "0-1张": 0,
+        "2张": 2,
+        "3张": 4,
+        "4张及以上": 5
+      }
+    },
+    {
+      "id": "report_quality",
+      "name": "实验报告质量",
+      "points": 10,
+      "grading_method": "keyword",
+      "description": "从报告六、问题与讨论和七、思考题回答评估",
+      "source_section": "六（5分）+ 七（5分）",
+      "criteria": [
+        {
+          "description": "调试问题记录真实（六）",
+          "points": 2,
+          "keywords": ["问题", "调试", "遇到", "困难", "错误"]
+        },
+        {
+          "description": "团队协作解决过程（六）",
+          "points": 1,
+          "keywords": ["解决", "协作", "团队", "讨论"]
+        },
+        {
+          "description": "个人心得独立且深刻（六）",
+          "points": 2,
+          "keywords": ["心得", "体会", "总结", "收获", "个人", "感悟"]
+        },
+        {
+          "description": "思考题回答完整正确（七）",
+          "points": 5,
+          "keywords": ["思考题", "问题", "问答", "答"]
+        }
+      ]
+    }
+  ],
+  "plagiarism_detection": {
+    "enabled": true,
+    "method": "hybrid",
+    "thresholds": {
+      "warning": 80.0,
+      "severe": 85.0,
+      "critical": 90.0
+    },
+    "penalties": {
+      "warning": 10.0,
+      "severe": 30.0,
+      "critical": 100.0
+    },
+    "cross_group_bonus_penalty": 5.0,
+    "description": "自动检测抄袭并扣分：80-85%扣10分，85-90%扣30分，90%以上记0分"
+  },
+  "reference_answers": {
+    "gpio_pins": {
+      "LED0": "PF9 (低电平有效)",
+      "LED1": "PF10 (低电平有效)",
+      "KEY0": "PE4 (外部中断，下降沿触发，内部上拉)"
+    },
+    "gear_states": {
+      "P": "LED0亮，LED1灭",
+      "R": "LED0灭，LED1亮",
+      "N": "LED0灭，LED1灭",
+      "D": "LED0亮，LED1亮"
+    },
+    "state_machine": "P → R → N → D → P (循环切换)",
+    "debouncing": "使用DWT周期计数器实现50ms消抖，168MHz×50ms=8,400,000周期",
+    "interrupt_config": "EXTI4，下降沿触发，NVIC优先级配置，HAL_GPIO_EXTI_Callback",
+    "thinking_questions": {
+      "Q1": "按键配置为下降沿触发是因为按键按下时电平从高变低（有上拉），下降沿更可靠检测按键动作",
+      "Q2": "DWT消抖使用硬件计数器，不阻塞CPU，精度高；软件延时消抖会阻塞CPU，影响实时性",
+      "Q3": "在状态机中添加条件判断，若当前为D档且按键触发，先切到N档，再按一次才到R档",
+      "Q4": "中断服务程序应尽可能短，因为高优先级中断会阻塞其他中断，长时间执行会影响系统实时性",
+      "Q5": "本实验LED是低电平点亮，代码中HAL_GPIO_WritePin(...,GPIO_PIN_RESET)点亮，SET熄灭",
+      "Q6": "实际汽车中档位传感器通常采用数字量信号（开关型）或总线信号（CAN/LIN）",
+      "Q7": "扩展状态枚举添加S/L档位，增加状态节点，修改switch语句和LED显示逻辑"
+    }
+  },
+  "common_issues": [
+    "未正确配置GPIO模式（输入/输出）",
+    "中断优先级设置不当导致响应异常",
+    "消抖时间不足导致误触发",
+    "状态机逻辑错误（档位跳变）",
+    "LED极性理解错误（高低电平反了）",
+    "报告缺少关键章节内容",
+    "代码缺少关键注释",
+    "个人心得与他人雷同（该项计0分）",
+    "思考题未回答或回答不完整"
+  ]
+}

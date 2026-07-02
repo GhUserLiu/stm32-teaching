@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(arm-none-eabi-gcc --version)",
+      "Bash(make -C build/Debug)",
+      "Bash(make clean *)",
+      "Bash(make)",
+      "Bash(unzip -p \"M144Z-M4最小系统板IO引脚分配表——STM32F407.xlsx\" xl/worksheets/sheet1.xml)",
+      "Bash(unzip -p \"M144Z-M4最小系统板IO引脚分配表——STM32F407.xlsx\" xl/sharedStrings.xml)",
+      "Bash(arm-none-eabi-objdump -d build/stm32-teaching.elf)",
+      "Bash(arm-none-eabi-objdump -s -j .isr_vector build/stm32-teaching.elf)",
+      "Bash(arm-none-eabi-objdump -s build/stm32-teaching.elf)",
+      "Bash(arm-none-eabi-objdump -s TEST.axf)",
+      "Bash(arm-none-eabi-objdump -s TEST.hex)",
+      "Bash(rm -rf build/Debug)",
+      "Bash(rm -f build/*.o)",
+      "Bash(pdftotext \"d:/4-Workspace/MCU_Research/project_test/stm32-teaching/实验六代码.pdf\" -)",
+      "Bash(dir \"d:\\\\4-Workspace\\\\MCU_Research\\\\project_test\\\\stm32-teaching\\\\build\\\\\")",
+      "Bash(git push *)",
+      "Bash(git config *)",
+      "Bash(git count-objects *)",
+      "Bash(git -c http.sslVerify=false -c http.proxy=http://127.0.0.1:7897 push origin main)",
+      "WebSearch"
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "_comment": "安全配置文件 - 控制查重系统的安全行为",
+  "_version": "1.0.0",
+  "_warning": "修改此配置前请了解安全影响",
+
+  "zip_limits": {
+    "_description": "ZIP文件处理限制，防御Zip炸弹攻击",
+    "max_outer_size": 104857600,
+    "max_inner_size": 52428800,
+    "max_file_count": 1000,
+    "max_nesting_level": 2,
+    "max_filename_length": 255,
+    "allow_symlinks": false,
+    "_notes": {
+      "max_outer_size": "外层ZIP最大100MB，防止解压爆炸",
+      "max_inner_size": "内层单个文件最大50MB",
+      "max_file_count": "最多1000个文件，防止遍历攻击",
+      "max_nesting_level": "最多2层嵌套",
+      "allow_symlinks": "不允许符号链接，防止路径遍历"
+    }
+  },
+
+  "path_validation": {
+    "_description": "路径验证配置，防御路径遍历攻击",
+    "allowed_base_dirs": [
+      "docs/teaching"
+    ],
+    "allow_absolute_paths": false,
+    "allow_parent_references": false,
+    "_notes": {
+      "allowed_base_dirs": "允许的基础目录列表",
+      "allow_absolute_paths": "不允许绝对路径",
+      "allow_parent_references": "不允许..父目录引用"
+    }
+  },
+
+  "anonymization": {
+    "_description": "数据脱敏配置，保护学生隐私",
+    "enabled": false,
+    "mask_student_id": true,
+    "mask_name": false,
+    "preserve_last_digits": 4,
+    "preserve_name_length": true,
+    "_notes": {
+      "enabled": "默认关闭，需要时启用",
+      "mask_student_id": "脱敏学号",
+      "mask_name": "是否脱敏姓名",
+      "preserve_last_digits": "保留学号后4位",
+      "preserve_name_length": "保留姓名长度用*代替"
+    }
+  },
+
+  "xml_parsing": {
+    "_description": "XML解析配置，防御XXE注入攻击",
+    "use_defusedxml": true,
+    "disable_entities": true,
+    "disable_external_dtd": true,
+    "_notes": {
+      "use_defusedxml": "优先使用defusedxml库",
+      "disable_entities": "禁用XML实体处理",
+      "disable_external_dtd": "禁用外部DTD加载"
+    }
+  },
+
+  "logging": {
+    "_description": "日志记录配置",
+    "log_dir": "logs",
+    "log_level": "INFO",
+    "log_security_events": true,
+    "max_log_size": 10485760,
+    "_notes": {
+      "log_dir": "日志文件目录",
+      "log_level": "日志级别：DEBUG, INFO, WARNING, ERROR",
+      "log_security_events": "记录安全相关事件",
+      "max_log_size": "单个日志文件最大10MB"
+    }
+  },
+
+  "makefile_security": {
+    "_description": "Makefile安全配置",
+    "allowed_projects": [
+      "01-turn-signal",
+      "07-car-gear",
+      "_template",
+      "Test6"
+    ],
+    "_notes": {
+      "allowed_projects": "允许的项目白名单"
+    }
+  },
+
+  "_security_recommendations": {
+    "_production": "生产环境建议配置",
+    "anonymization": {
+      "enabled": true,
+      "mask_name": true
+    },
+    "logging": {
+      "log_level": "WARNING"
+    },
+    "_notes": "生产环境应启用所有安全功能"
+  }
+}

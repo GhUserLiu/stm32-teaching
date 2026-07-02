@@ -1,0 +1,48 @@
+{
+    // 编辑器配置
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+
+    // C/C++ 语言配置
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c",
+        "*.s": "asm"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "xaver.clang-format"
+    },
+
+    // IntelliSense 配置
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/common/inc",
+        "${workspaceFolder}/common/core",
+        "${workspaceFolder}/common/bsp"
+    ],
+
+    // 文件配置
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/*.o": true,
+        "**/*.elf": true,
+        "**/*.hex": true,
+        "**/*.bin": true,
+        "**/*.map": true,
+        "**/__pycache__": true
+    },
+
+    // 终端配置
+    "terminal.integrated.defaultProfile.windows": "bash",
+
+    // EIDE 配置
+    "eide.assist.build.saveBeforeBuild": true,
+    "eide.assist.build.autoIntelliSense": true
+}

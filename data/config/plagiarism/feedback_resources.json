@@ -1,0 +1,650 @@
+{
+  "version": "2.0",
+  "experiment_info": {
+    "name": "汽车档位模拟器设计",
+    "code": "07_car_gear_experiment",
+    "task_doc": "data/teaching/2026-春季/汽服2302B班/docs/task.md",
+    "reference_code": "src/projects/07-car-gear/cubemx/Core/Src/main.c",
+    "template": "data/templates/templates/实验报告模板.docx",
+    "rubric": "data/rubrics/rubric.json"
+  },
+  "technical_issues": [
+    {
+      "id": "gpio_mode_missing",
+      "title": "GPIO模式配置未说明",
+      "category": "technical",
+      "severity": "high",
+      "points_affected": 5,
+      "detection": {
+        "missing_keywords": ["GPIO_MODE", "推挽输出", "输入模式", "输出模式"],
+        "context_keywords": ["硬件", "引脚", "配置", "连接"]
+      },
+      "description": "报告中对GPIO引脚的工作模式（输入/输出/中断）未作说明",
+      "suggestions": [
+        "在硬件设计章节的引脚配置表格中，添加'模式'列",
+        "说明PE4配置为外部中断输入模式（下降沿触发）",
+        "说明PF9/PF10配置为推挽输出模式"
+      ],
+      "code_example": "// GPIO模式配置示例\nGPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;  // 下降沿触发\nGPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;  // 推挽输出\nGPIO_InitStruct.Mode = GPIO_MODE_INPUT;       // 输入模式",
+      "resources": {
+        "task_section": "4.5.1 外部中断配置",
+        "reference_code": "main.c:L120-150",
+        "thinking_question": "Q1"
+      },
+      "estimated_time": "5分钟"
+    },
+    {
+      "id": "led_polarity_error",
+      "title": "LED极性理解错误",
+      "category": "technical",
+      "severity": "high",
+      "points_affected": 8,
+      "detection": {
+        "error_patterns": ["高电平点亮", "低电平熄灭", "SET.*点亮", "RESET.*熄灭"]
+      },
+      "description": "本实验LED为低电平点亮，报告中的描述可能有误",
+      "suggestions": [
+        "检查代码中的HAL_GPIO_WritePin调用",
+        "GPIO_PIN_RESET点亮，GPIO_PIN_SET熄灭",
+        "在报告中明确说明'低电平有效'特性"
+      ],
+      "code_example": "// LED控制（低电平点亮）\nHAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);  // 点亮\nHAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);    // 熄灭\n\n// 档位LED显示\n// P档: LED0亮 LED1灭 (01)\n// R档: LED0灭 LED1亮 (10)\n// N档: LED0灭 LED1灭 (00)\n// D档: LED0亮 LED1亮 (11)",
+      "resources": {
+        "task_section": "4.4 档位显示逻辑",
+        "thinking_question": "Q5"
+      },
+      "estimated_time": "3分钟"
+    },
+    {
+      "id": "pe4_edge_missing",
+      "title": "PE4下降沿触发未说明",
+      "category": "technical",
+      "severity": "high",
+      "points_affected": 5,
+      "detection": {
+        "missing_keywords": ["下降沿", "PE4", "FALLING"],
+        "context_keywords": ["PE4", "KEY0", "按键"]
+      },
+      "description": "未说明PE4按键配置为下降沿触发的原因",
+      "suggestions": [
+        "说明按键有内部上拉，平时为高电平",
+        "按下时电平从高变低，产生下降沿",
+        "下降沿触发比电平触发更可靠"
+      ],
+      "code_example": "// 按键下降沿触发配置\nGPIO_InitStruct.Pin = GPIO_PIN_4;\nGPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;  // 下降沿触发\nGPIO_InitStruct.Pull = GPIO_PULLUP;          // 内部上拉\nGPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;\nHAL_GPIO_Init(GPIOE, &GPIO_InitStruct);\n\n// 工作原理：\n// 平时：上拉电阻保持高电平\n// 按下：按键接地，电平变为低\n// 释放：上拉恢复高电平\n// 触发：高→低产生下降沿",
+      "resources": {
+        "task_section": "4.5.1 外部中断配置",
+        "thinking_question": "Q1"
+      },
+      "estimated_time": "5分钟"
+    },
+    {
+      "id": "dwt_principle_missing",
+      "title": "DWT消抖原理未说明",
+      "category": "technical",
+      "severity": "medium",
+      "points_affected": 8,
+      "detection": {
+        "missing_keywords": ["DWT.*原理", "CYCCNT", "消抖.*原理", "168.*MHz"],
+        "has_code": ["DWT", "CYCCNT"]
+      },
+      "description": "虽然使用了DWT消抖，但缺少原理说明",
+      "suggestions": [
+        "说明DWT计数器频率为168MHz（系统频率）",
+        "计算公式：消抖周期 = 系统频率 × 消抖时间",
+        "50ms消抖需要：168MHz × 0.05s = 8,400,000周期",
+        "对比软件延时消抖会阻塞CPU的问题"
+      ],
+      "code_example": "// DWT消抖原理与实现\n\n// 1. DWT初始化（使能周期计数器）\nvoid DWT_Init(void) {\n    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;  // 使能DWT\n    DWT->CYCCNT = 0;                                  // 复位计数器\n    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;             // 使能计数\n}\n\n// 2. 定义消抖周期数（50ms @ 168MHz）\n// 计算公式：168,000,000 Hz × 0.05 s = 8,400,000\n#define DEBOUNCE_CYCLES 8400000\n\n// 3. 消抖检查函数\nstatic uint32_t last_tick = 0;\n\nint is_debounced(void) {\n    uint32_t current = DWT->CYCCNT;\n    // 检查是否超过消抖周期\n    if ((current - last_tick) >= DEBOUNCE_CYCLES) {\n        last_tick = current;\n        return 1;  // 可以处理\n    }\n    return 0;  // 仍在消抖中\n}\n\n// DWT消抖优势：\n// 1. 不阻塞CPU（不使用延时函数）\n// 2. 精度高（基于硬件计数器）\n// 3. 开销小（仅读取寄存器）",
+      "resources": {
+        "task_section": "4.5.2 DWT消抖原理",
+        "thinking_question": "Q2"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "state_machine_logic_error",
+      "title": "状态机切换逻辑错误",
+      "category": "technical",
+      "severity": "high",
+      "points_affected": 10,
+      "detection": {
+        "error_patterns": ["P.*N", "R.*D", "switch.*break.*缺少", "直接.*P.*D"]
+      },
+      "description": "状态机切换顺序应为P→R→N→D→P，D档直接切R档需经过N档",
+      "suggestions": [
+        "检查switch-case结构是否完整",
+        "确保每个状态都正确切换到下一个状态",
+        "使用枚举类型确保顺序正确",
+        "思考题答案：D→R需要在D档按键先到N，再按一次到R"
+      ],
+      "code_example": "// 档位状态机实现\n\n// 1. 定义状态枚举（顺序很重要）\ntypedef enum {\n    GEAR_P = 0,  // 驻车档\n    GEAR_R,       // 倒档\n    GEAR_N,       // 空档\n    GEAR_D        // 前进档\n} GearState_t;\n\n// 2. 当前状态\nGearState_t current_gear = GEAR_P;\n\n// 3. 状态切换函数（按键触发）\nvoid Gear_Switch(void) {\n    // 方法1: 循环切换\n    current_gear = (current_gear + 1) % 4;\n    Gear_Update_LED();\n}\n\n// 4. LED显示更新\nvoid Gear_Update_LED(void) {\n    switch(current_gear) {\n        case GEAR_P:  // P: LED0亮，LED1灭\n            HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);\n            HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);\n            break;\n        case GEAR_R:  // R: LED0灭，LED1亮\n            HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);\n            HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);\n            break;\n        case GEAR_N:  // N: 都灭\n            HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);\n            HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);\n            break;\n        case GEAR_D:  // D: 都亮\n            HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);\n            HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);\n            break;\n    }\n}\n\n// 思考题：D档如何直接切到R档？\n// 答案：实现两段切换\n// D档按一次→N档，再按一次→R档",
+      "resources": {
+        "task_section": "4.6 状态机设计",
+        "reference_code": "main.c:L200-250"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "interrupt_priority_missing",
+      "title": "中断优先级配置未说明",
+      "category": "technical",
+      "severity": "medium",
+      "points_affected": 3,
+      "detection": {
+        "missing_keywords": ["NVIC", "优先级", "Priority", "抢占", "响应"]
+      },
+      "description": "未说明EXTI中断的优先级配置",
+      "suggestions": [
+        "说明NVIC优先级分组方式（如4位抢占优先级）",
+        "说明EXTI4中断优先级设置值",
+        "解释优先级数值越小优先级越高"
+      ],
+      "code_example": "// NVIC优先级配置\n\n// 1. 优先级分组（在main中）\nHAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);  // 4位抢占，0位响应\n\n// 2. 设置EXTI4优先级\nHAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);  // 抢占5，响应0\n\n// 3. 使能中断\nHAL_NVIC_EnableIRQ(EXTI4_IRQn);\n\n// 优先级说明：\n// - 数值越小，优先级越高\n// - 抢占优先级：可以打断低优先级中断\n// - 响应优先级：抢占相同时比较响应",
+      "resources": {
+        "task_section": "4.5.1 外部中断配置",
+        "thinking_question": "Q4"
+      },
+      "estimated_time": "5分钟"
+    },
+    {
+      "id": "callback_function_missing",
+      "title": "中断回调函数说明不足",
+      "category": "technical",
+      "severity": "medium",
+      "points_affected": 4,
+      "detection": {
+        "missing_keywords": ["HAL_GPIO_EXTI_Callback", "回调", "Callback", "弱定义"]
+      },
+      "description": "未说明中断回调函数的作用和实现",
+      "suggestions": [
+        "说明HAL_GPIO_EXTI_Callback是HAL库的弱定义函数",
+        "需要在用户代码中重写此函数来实现自定义逻辑",
+        "说明回调函数在中断发生时自动被调用"
+      ],
+      "code_example": "// 中断回调函数实现\n\n// HAL库中的弱定义（在stm32f4xx_hal_gpio.c）\n__weak void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {\n    // 默认为空，用户可以重写\n}\n\n// 用户代码中重写\nvoid HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {\n    // 检查是否是KEY0按键\n    if (GPIO_Pin == KEY0_Pin) {\n        // 消抖检查\n        if (is_debounced()) {\n            // 执行状态切换\n            Gear_Switch();\n        }\n    }\n}\n\n// 中断响应流程：\n// 1. 按键按下触发EXTI中断\n// 2. 进入EXTI4_IRQHandler()\n// 3. HAL库处理清除中断标志\n// 4. 调用HAL_GPIO_EXTI_Callback()\n// 5. 执行用户代码",
+      "resources": {
+        "reference_code": "main.c:L180-200",
+        "task_section": "4.5.1 外部中断配置"
+      },
+      "estimated_time": "8分钟"
+    },
+    {
+      "id": "clock_config_missing",
+      "title": "时钟配置未说明",
+      "category": "technical",
+      "severity": "medium",
+      "points_affected": 3,
+      "detection": {
+        "missing_keywords": ["时钟", "AHB", "APB", "HCLK", "168"]
+      },
+      "description": "未说明系统时钟和GPIO时钟配置",
+      "suggestions": [
+        "说明STM32F407系统时钟为168MHz",
+        "说明需要使能GPIOE和GPIOF的时钟",
+        "说明时钟树结构：SYSCLK→AHB→APB→GPIO"
+      ],
+      "code_example": "// 时钟配置\n\n// 1. 系统时钟配置（由CubeMX生成）\n// System Clock Config = 168MHz\n// HCLK (AHB) = 168MHz\n// PCLK1 (APB1) = 42MHz\n// PCLK2 (APB2) = 84MHz\n\n// 2. 使能GPIO时钟\n__HAL_RCC_GPIOE_CLK_ENABLE();  // 使能GPIOE时钟（PE4）\n__HAL_RCC_GPIOF_CLK_ENABLE();  // 使能GPIOF时钟（PF9/PF10）\n\n// 注意：必须先使能时钟才能配置GPIO\n// 时钟未使能会导致GPIO不工作",
+      "estimated_time": "5分钟"
+    }
+  ],
+  "content_gaps": [
+    {
+      "id": "missing_hardware_diagram",
+      "title": "缺少硬件连接图",
+      "category": "content",
+      "severity": "high",
+      "points_affected": 10,
+      "section": "三、硬件设计与连接",
+      "detection": {
+        "missing_keywords": ["连接图", "接线图", "硬件图", "原理图", "图"]
+      },
+      "description": "报告缺少硬件连接示意图",
+      "suggestions": [
+        "使用绘图工具绘制STM32与LED、按键的连接图",
+        "标注PE4、PF9、PF10引脚",
+        "标注LED和按键的位置和名称",
+        "可以使用CubeMX生成的引脚图作为参考"
+      ],
+      "resources": {
+        "task_section": "4.2 硬件连接",
+        "template": "实验报告模板.docx"
+      },
+      "estimated_time": "15分钟"
+    },
+    {
+      "id": "pin_config_incomplete",
+      "title": "引脚配置说明不完整",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 3,
+      "section": "三、硬件设计与连接",
+      "detection": {
+        "required_pins": ["PE4", "PF9", "PF10"],
+        "missing_some": true
+      },
+      "description": "未对三个关键引脚逐一说明配置",
+      "suggestions": [
+        "创建引脚配置表格，包含：功能、引脚、模式、上拉/下拉、速度",
+        "PE4：外部中断输入（下降沿），内部上拉，高速",
+        "PF9：推挽输出，无上拉（LED0），高速",
+        "PF10：推挽输出，无上拉（LED1），高速"
+      ],
+      "code_example": "// 引脚配置表格示例\n\n/*\n| 功能   | GPIO引脚 | 配置模式         | 上拉/下拉 | 速度     | 说明 |\n|--------|----------|------------------|-----------|----------|------|\n| KEY0   | PE4      | 外部中断(下降沿) | 上拉      | High     | 按键输入 |\n| LED0   | PF9      | 推挽输出         | 无        | High     | 档位显示 |\n| LED1   | PF10     | 推挽输出         | 无        | High     | 档位显示 |\n*/",
+      "resources": {
+        "task_section": "4.3 引脚配置"
+      },
+      "estimated_time": "5分钟"
+    },
+    {
+      "id": "missing_flowchart",
+      "title": "缺少软件流程图",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 6,
+      "section": "四、软件设计与实现",
+      "detection": {
+        "missing_keywords": ["流程图", "程序流程", "框图", "软件流程"]
+      },
+      "description": "软件设计章节缺少流程图",
+      "suggestions": [
+        "绘制程序主流程图（初始化→等待中断→处理→更新）",
+        "绘制中断服务程序流程图",
+        "绘制状态机切换流程图",
+        "使用visio、draw.io或PPT绘制"
+      ],
+      "resources": {
+        "task_section": "4.6 状态机设计",
+        "template": "实验报告模板.docx"
+      },
+      "estimated_time": "20分钟"
+    },
+    {
+      "id": "code_comment_insufficient",
+      "title": "代码注释不足",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 8,
+      "section": "四、软件设计与实现",
+      "detection": {
+        "min_comment_ratio": 0.15
+      },
+      "description": "关键代码缺少必要的注释说明",
+      "suggestions": [
+        "为每个函数添加功能说明注释",
+        "为关键语句添加行内注释",
+        "说明状态枚举值的含义",
+        "说明LED显示逻辑和状态机切换逻辑"
+      ],
+      "code_example": "/**\n  * @brief  更新LED显示状态\n  * @param  gear: 当前档位 (GEAR_P/GEAR_R/GEAR_N/GEAR_D)\n  * @retval None\n  * @note   根据档位状态控制LED0和LED1的亮灭\n  */\nvoid update_led_display(GearState gear) {\n    switch(gear) {\n        case GEAR_P:\n            // P档：LED0亮，LED1灭\n            HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);\n            HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);\n            break;\n        // ... 其他档位\n    }\n}",
+      "resources": {
+        "reference_code": "main.c"
+      },
+      "estimated_time": "15分钟"
+    },
+    {
+      "id": "missing_test_results",
+      "title": "缺少测试结果记录",
+      "category": "content",
+      "severity": "high",
+      "points_affected": 8,
+      "section": "五、实验结果分析",
+      "detection": {
+        "missing_keywords": ["测试", "现象", "LED状态", "档位", "结果"]
+      },
+      "description": "未记录各档位下的LED状态测试结果",
+      "suggestions": [
+        "创建测试结果表格，记录P/R/N/D四种档位的LED状态",
+        "说明测试过程：按键操作→LED响应",
+        "记录测试是否符合预期",
+        "如有异常，说明原因和解决方案"
+      ],
+      "code_example": "/*\n测试结果记录表：\n\n| 档位 | 按键次数 | LED0状态 | LED1状态 | 符合预期 |\n|------|----------|-----------|-----------|----------|\n| P    | 初始     | 亮        | 灭        | ✓        |\n| R    | 1        | 灭        | 亮        | ✓        |\n| N    | 2        | 灭        | 灭        | ✓        |\n| D    | 3        | 亮        | 亮        | ✓        |\n| P    | 4        | 亮        | 灭        | ✓        |\n\n测试结论：\n- 状态机切换正确，符合P→R→N→D→P循环\n- LED显示逻辑正确，低电平点亮\n- 按键响应灵敏，消抖有效\n*/",
+      "resources": {
+        "task_section": "4.4 档位显示逻辑"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "missing_test_photo",
+      "title": "缺少实验照片或截图",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 4,
+      "section": "五、实验结果分析",
+      "detection": {
+        "missing_keywords": ["照片", "截图", "图片", "实物"]
+      },
+      "description": "缺少实物测试照片或截图",
+      "suggestions": [
+        "拍摄各档位的LED点亮照片",
+        "或者使用CubeMX的仿真截图",
+        "照片应清晰显示LED状态和档位信息",
+        "可以在一张照片中展示多个档位状态"
+      ],
+      "resources": {
+        "template": "实验报告模板.docx"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "missing_result_analysis",
+      "title": "结果对比分析不透彻",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 8,
+      "section": "五、实验结果分析",
+      "detection": {
+        "missing_keywords": ["结果分析", "对比", "预期", "差异", "分析", "原因"]
+      },
+      "description": "测试结果缺少与预期值的对比分析",
+      "suggestions": [
+        "列出预期LED状态与实际状态的对比",
+        "分析两者是否一致",
+        "如有差异，分析可能原因",
+        "讨论实验成功的关键因素",
+        "思考实际应用中的意义"
+      ],
+      "resources": {
+        "task_section": "4.4 档位显示逻辑"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "missing_debug_log",
+      "title": "缺少调试问题记录",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 2,
+      "section": "六、问题与讨论",
+      "detection": {
+        "missing_keywords": ["问题", "调试", "错误", "异常", "bug", "解决"]
+      },
+      "description": "未记录调试过程中遇到的问题",
+      "suggestions": [
+        "记录调试中遇到的2-3个典型问题",
+        "说明问题现象和原因",
+        "说明如何解决",
+        "这些真实记录能体现学习过程"
+      ],
+      "code_example": "/*\n调试过程记录示例：\n\n问题1：按键按下后LED状态不变\n\n现象：按下KEY0按键，LED0和LED1状态没有变化\n\n排查过程：\n1. 检查硬件连接 - 正常\n2. 检查GPIO配置 - 发现未使能时钟\n3. 添加__HAL_RCC_GPIOF_CLK_ENABLE() - 问题解决\n\n原因分析：忘记使能GPIOF时钟，导致GPIO无法工作\n\n问题2：按键响应太灵敏，出现连跳\n\n现象：按一次按键，档位跳变多个\n\n排查过程：\n1. 检查中断配置 - 正常\n2. 发现没有消抖处理\n3. 添加DWT消抖 - 问题解决\n\n原因分析：机械按键抖动导致多次中断触发\n*/",
+      "resources": {
+        "rubric_common_issues": "common_issues"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "generic_personal_reflection",
+      "title": "个人心得过于通用",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 2,
+      "section": "六、问题与讨论",
+      "detection": {
+        "generic_patterns": ["学到了很多", "收获很大", "提高能力", "认真完成", "通过实验"]
+      },
+      "description": "个人心得体会比较通用，缺乏个人特色",
+      "suggestions": [
+        "写具体的技术收获，如'理解了中断的响应过程'",
+        "写具体的困难，如'调试消抖参数花费较多时间'",
+        "写对汽车电子应用的理解",
+        "避免空话套话，体现个人真实思考"
+      ],
+      "code_example": "/*\n好的个人心得示例：\n\n1. 对中断系统的理解加深\n   本次实验使用了EXTI外部中断，通过配置GPIO为中断模式、设置NVIC优先级、\n   实现回调函数，我理解了中断的完整响应过程。特别是中断优先级的概念，\n   抢占优先级和响应优先级的区别在实际应用中很重要。\n\n2. 状态机设计的实用性\n   汽车档位的切换是典型的状态机应用场景。通过enum定义状态、switch-case\n   实现切换逻辑，代码结构清晰，易于维护。我认识到状态机在很多嵌入式\n   场景中都有应用，如通信协议解析、用户界面管理等。\n\n3. 调试过程中的收获\n   调试按键抖动问题时，我尝试了软件延时和DWT计数器两种方法。DWT方法\n   不阻塞CPU、精度更高，这让我认识到选择合适的工具和算法很重要。\n\n4. 对汽车电子的认识\n   汽车档位控制看似简单，实际需要考虑很多因素：可靠性、安全性、用户体验等。\n   实验中的消抖处理、状态切换逻辑，都体现了工程思维。\n*/",
+      "resources": {
+        "task_section": "一、实验目的"
+      },
+      "estimated_time": "15分钟"
+    },
+    {
+      "id": "thinking_questions_incomplete",
+      "title": "思考题回答不完整",
+      "category": "content",
+      "severity": "high",
+      "points_affected": 5,
+      "section": "七、思考题回答",
+      "detection": {
+        "required_questions": 7,
+        "missing_some": true
+      },
+      "description": "7个思考题未全部回答",
+      "suggestions": [
+        "逐一回答所有7个思考题",
+        "回答要结合实验实际，不能照抄",
+        "不懂的题目可以查阅资料后回答",
+        "思考题是理解实验原理的关键"
+      ],
+      "resources": {
+        "task_section": "思考题",
+        "rubric_reference": "thinking_questions"
+      },
+      "estimated_time": "30分钟"
+    },
+    {
+      "id": "team_collaboration_missing",
+      "title": "团队协作过程记录缺失",
+      "category": "content",
+      "severity": "medium",
+      "points_affected": 3,
+      "section": "一、团队信息与分工",
+      "detection": {
+        "missing_keywords": ["分工", "协作", "团队", "合作", "讨论"]
+      },
+      "description": "未记录团队成员的分工和协作过程",
+      "suggestions": [
+        "明确列出每位成员负责的部分",
+        "记录团队讨论和决策过程",
+        "说明如何解决意见分歧",
+        "体现真实的团队合作经历"
+      ],
+      "estimated_time": "10分钟"
+    }
+  ],
+  "quality_improvements": [
+    {
+      "id": "code_formatting",
+      "title": "代码格式不规范",
+      "category": "quality",
+      "severity": "low",
+      "points_affected": 2,
+      "detection": {
+        "missing_code_blocks": true
+      },
+      "description": "代码未使用代码块格式，影响阅读",
+      "suggestions": [
+        "使用```c ... ```将代码包裹成代码块",
+        "代码块会有语法高亮，更易读",
+        "缩进统一使用4个空格"
+      ],
+      "code_example": "```c\n// 正确的代码块格式\nvoid main(void) {\n    HAL_Init();\n    SystemClock_Config();\n    // ...\n}\n```",
+      "estimated_time": "3分钟"
+    },
+    {
+      "id": "report_structure",
+      "title": "报告结构层次不清",
+      "category": "quality",
+      "severity": "low",
+      "points_affected": 2,
+      "detection": {
+        "min_section_count": 7
+      },
+      "description": "报告章节划分不够清晰",
+      "suggestions": [
+        "使用一、二、三等数字标记章节",
+        "重要子内容使用1.1、1.2标记",
+        "章节之间使用空行分隔",
+        "参考实验报告模板的结构"
+      ],
+      "resources": {
+        "template": "实验报告模板.docx"
+      },
+      "estimated_time": "10分钟"
+    },
+    {
+      "id": "naming_convention",
+      "title": "命名不规范",
+      "category": "quality",
+      "severity": "low",
+      "points_affected": 2,
+      "detection": {
+        "error_patterns": ["getGear", "setLed", "TurnOn"]
+      },
+      "description": "代码命名不符合嵌入式C规范",
+      "suggestions": [
+        "函数名使用小写字母+下划线：gear_init()",
+        "宏定义全大写：MAX_GEAR",
+        "变量名小写：current_state",
+        "避免使用驼峰命名"
+      ],
+      "code_example": "// 命名规范示例\n\n// 函数命名：小写+下划线\nvoid gear_init(void);          // ✓ 正确\nvoid GearInit(void);           // ✗ 错误\n\n// 宏定义：全大写\n#define MAX_GEAR  4              // ✓ 正确\n#define maxGear  4               // ✗ 错误\n\n// 变量命名：小写\nint current_gear;               // ✓ 正确\nint currentGear;                // ✗ 错误",
+      "estimated_time": "5分钟"
+    },
+    {
+      "id": "word_count_low",
+      "title": "报告字数不足",
+      "category": "quality",
+      "severity": "medium",
+      "points_affected": 5,
+      "detection": {
+        "min_char_count": 2000
+      },
+      "description": "报告内容偏少，未达到字数要求",
+      "suggestions": [
+        "补充硬件设计详细说明",
+        "添加完整的代码注释",
+        "完善调试过程记录",
+        "扩展思考题回答",
+        "增加实验心得体会"
+      ],
+      "estimated_time": "30分钟"
+    }
+  ],
+  "quick_wins": [
+    {
+      "title": "添加实验结果照片",
+      "description": "拍摄各档位LED照片，插入报告中",
+      "points": 4,
+      "time": "10分钟",
+      "issue_ref": "missing_test_photo"
+    },
+    {
+      "title": "补充个人心得体会",
+      "description": "写出2-3条具体的技术收获",
+      "points": 2,
+      "time": "15分钟",
+      "issue_ref": "generic_personal_reflection"
+    },
+    {
+      "title": "格式化代码块",
+      "description": "使用代码块包裹所有代码",
+      "points": 2,
+      "time": "3分钟",
+      "issue_ref": "code_formatting"
+    },
+    {
+      "title": "补充引脚配置表",
+      "description": "列出PE4/PF9/PF10的完整配置",
+      "points": 3,
+      "time": "5分钟",
+      "issue_ref": "pin_config_incomplete"
+    },
+    {
+      "title": "回答剩余思考题",
+      "description": "完成未回答的思考题",
+      "points": 5,
+      "time": "30分钟",
+      "issue_ref": "thinking_questions_incomplete"
+    },
+    {
+      "title": "添加测试结果表格",
+      "description": "记录各档位LED状态测试结果",
+      "points": 4,
+      "time": "10分钟",
+      "issue_ref": "missing_test_results"
+    },
+    {
+      "title": "绘制软件流程图",
+      "description": "绘制主程序和中断流程图",
+      "points": 5,
+      "time": "20分钟",
+      "issue_ref": "missing_flowchart"
+    },
+    {
+      "title": "说明DWT消抖原理",
+      "description": "解释DWT计数器的工作原理和计算公式",
+      "points": 4,
+      "time": "10分钟",
+      "issue_ref": "dwt_principle_missing"
+    },
+    {
+      "title": "补充时钟配置说明",
+      "description": "说明系统时钟和GPIO时钟配置",
+      "points": 2,
+      "time": "5分钟",
+      "issue_ref": "clock_config_missing"
+    }
+  ],
+  "feedback_templates": {
+    "styles": {
+      "standard": {
+        "name": "标准风格",
+        "description": "平衡的信息量，适合大多数学生",
+        "sections": ["summary", "scores", "issues", "quick_wins", "encouragement"]
+      },
+      "detailed": {
+        "name": "详细风格",
+        "description": "包含完整的学习路径和资源推荐",
+        "sections": ["summary", "scores", "issues", "suggestions", "quick_wins", "learning_path", "resources", "encouragement"]
+      },
+      "concise": {
+        "name": "简洁风格",
+        "description": "突出主要问题和快速改进项",
+        "sections": ["summary", "top_issues", "quick_wins"]
+      },
+      "encouraging": {
+        "name": "鼓励风格",
+        "description": "强调亮点，温和指出需要改进之处",
+        "sections": ["summary", "scores", "strengths", "suggestions", "encouragement"],
+        "tone": "positive"
+      },
+      "technical": {
+        "name": "技术风格",
+        "description": "侧重技术问题和代码示例",
+        "sections": ["summary", "technical_issues", "code_examples", "resources"],
+        "focus": "technical"
+      }
+    }
+  },
+  "learning_resources": {
+    "gpio": {
+      "name": "GPIO配置指南",
+      "path": "#",
+      "type": "tutorial",
+      "description": "STM32 GPIO工作原理、配置模式和常见应用"
+    },
+    "exti": {
+      "name": "中断系统详解",
+      "path": "#",
+      "type": "tutorial",
+      "description": "EXTI中断原理、NVIC优先级配置和中断处理流程"
+    },
+    "dwt": {
+      "name": "DWT精确计时",
+      "path": "#",
+      "type": "tutorial",
+      "description": "DWT周期计数器原理和非阻塞延时实现"
+    },
+    "state_machine": {
+      "name": "状态机设计",
+      "path": "#",
+      "type": "doc",
+      "description": "有限状态机(FSM)设计模式和C语言实现"
+    },
+    "c_coding": {
+      "name": "嵌入式C编码规范",
+      "path": "#",
+      "type": "doc",
+      "description": "命名规范、注释格式、代码组织"
+    }
+  }
+}

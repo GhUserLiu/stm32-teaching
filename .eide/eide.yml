@@ -1,0 +1,89 @@
+version: "4.1"
+name: stm32-teaching
+type: ARM
+deviceName: STM32F407ZGTx
+packDir: .pack/Keil/STM32F4xx_DFP.3.1.1
+srcDirs:
+  - projects/01-turn-signal
+  - common/core
+  - common/bsp
+  - common/inc
+virtualFolder:
+  name: <virtual_root>
+  files: []
+  folders: []
+dependenceList: []
+outDir: build\01-turn-signal
+miscInfo:
+  uid: fd4b1674541bdd2a4cfe463c6ba02d6a
+targets:
+  Debug:
+    cppPreprocessAttrs:
+      defineList:
+        - STM32F407xx
+      incList:
+        - .
+        - projects/01-turn-signal
+        - common/inc
+        - common/core
+        - common/bsp
+      libList: []
+    excludeList:
+      - projects/_template
+      - projects/Test6
+    settings:
+      debugger: cortex-debug
+    toolchain: GCC
+    toolchainConfigMap:
+      GCC:
+        archExtensions: ""
+        cpuType: Cortex-M4
+        floatingPointHardware: single
+        options:
+          version: 5
+          afterBuildTasks: []
+          asm-compiler:
+            ASM_FLAGS: ""
+          beforeBuildTasks: []
+          c/cpp-compiler:
+            CXX_FLAGS: ""
+            C_FLAGS: ""
+            language-c: c11
+            language-cpp: c++11
+            one-elf-section-per-data: true
+            one-elf-section-per-function: true
+            optimization: level-debug
+            warnings: all-warnings
+          global:
+            $float-abi-type: hard
+            misc-control: ""
+            not-use-syscalls: true
+            output-debug-info: enable
+            use-newlib-nano: true
+          linker:
+            $outputTaskExcludes: []
+            LD_FLAGS: ""
+            LIB_FLAGS: -lm
+            output-format: elf
+            remove-unused-input-sections: true
+        scatterFilePath: STM32F407XX_FLASH.ld
+        storageLayout:
+          RAM: []
+          ROM: []
+        useCustomScatterFile: true
+    uploadConfigMap:
+      JLink:
+        baseAddr: ""
+        bin: ""
+        cpuInfo:
+          cpuName: "null"
+          vendor: "null"
+        otherCmds: ""
+        proType: 1
+        speed: 8000
+      OpenOCD:
+        baseAddr: "0x08000000"
+        bin: ""
+        interface: stlink
+        target: stm32f4x
+    uploader: OpenOCD

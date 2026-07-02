@@ -1,0 +1,207 @@
+# 教学管理工具统一配置文件
+# Teaching Management System Configuration
+
+# 实验配置
+experiments:
+  07-car-gear:
+    name: "汽车档位模拟器设计"
+    code: "07_car_gear_experiment"
+    template_path: "templates/07-car-gear-template.docx"
+    rubric_path: "rubrics/rubric.json"
+    due_date: "2025-04-30"
+    description: "基于STM32F407的汽车档位模拟器设计与实现"
+
+  # 可以添加更多实验
+  # 01-turn-signal:
+  #   name: "转向灯控制系统"
+  #   template_path: "templates/01-turn-signal-template.docx"
+  #   rubric_path: "rubrics/rubric_01.json"
+
+  final-project:
+    name: "期末综合项目（多功能嵌入式系统综合设计）"
+    code: "final_project"
+    rubric_path: "rubrics/final-project.json"
+    description: "三选一综合设计；功能实现由教师实测评定，不在自检预测分内"
+
+# 班级配置
+classes:
+  汽服2302B班:
+    code: "auto2302b"
+    students_file: "students/汽服2302B班.xlsx"
+    submission_dir: "submissions/"
+    group_file: "groups/汽服2302B班.json"
+
+  # 可以添加更多班级
+  # 汽服2301A班:
+  #   code: "auto2301a"
+  #   students_file: "students/汽服2301A班.xlsx"
+
+# 查重阈值配置
+thresholds:
+  # 可疑阈值（开始标记）
+  suspicious: 60
+  # 高风险阈值
+  high_risk: 75
+  # 抄袭阈值（确认抄袭）
+  plagiarism: 85
+  # 改写检测范围
+  paraphrase_min: 50
+  paraphrase_max: 85
+  # 代码相似阈值
+  code_similar: 85
+  # 段落相似阈值
+  paragraph_similar: 80
+
+# 相似度计算权重
+weights:
+  text: 0.5          # 文本相似度权重
+  code: 0.3          # 代码相似度权重
+  structure: 0.1     # 结构相似度权重
+  semantic: 0.1      # 语义相似度权重
+
+# 功能开关
+features:
+  # 模板过滤
+  enable_template_filter: true
+
+  # 语义检测
+  enable_semantic_detection: true
+  semantic_method: "auto"  # auto, tfidf, embedding
+  prefer_embedding: false  # 优先使用嵌入模型（需要安装sentence-transformers）
+  enable_jieba: true
+
+  # 代码混淆检测
+  enable_code_obfuscation: true
+
+  # AI生成检测（实验性）
+  enable_ai_detection: false
+  ai_detection_threshold: 0.7
+
+  # 图片相似度检测
+  enable_image_similarity: true
+
+# 评分配置
+scoring:
+  # 是否启用语义评分
+  enable_semantic_scoring: true
+
+  # 质量调整权重
+  quality_weight: 0.2
+
+  # 评分融合策略
+  aggregation_method: "weighted"  # weighted, max, min, average
+
+  # 评分等级
+  grading_scale:
+    A:
+      min: 90
+      max: 100
+      label: "优"
+    B:
+      min: 80
+      max: 89
+      label: "良"
+    C:
+      min: 70
+      max: 79
+      label: "中"
+    D:
+      min: 60
+      max: 69
+      label: "及格"
+    F:
+      min: 0
+      max: 59
+      label: "不及格"
+
+# 输出配置
+output:
+  # 默认输出格式
+  default_format: "excel"  # excel, pdf, html
+
+  # 是否生成详细报告
+  detailed_report: true
+
+  # 是否生成学生反馈
+  include_feedback: true
+
+  # 报告语言
+  language: "zh-CN"
+
+  # 输出目录
+  output_dir: "results/"
+
+# 工作流配置
+workflow:
+  # 是否启用断点续传
+  enable_resume: true
+
+  # 状态文件位置
+  state_file: ".workflow_state.json"
+
+  # 是否启用并行处理
+  enable_parallel: true
+
+  # 最大并行任务数
+  max_parallel_tasks: 4
+
+  # 工作流阶段定义
+  stages:
+    extract:
+      name: "Extract Content"
+      function: "extract_content"
+      dependencies: []
+      outputs: ["extracted_content.json"]
+
+    evaluate:
+      name: "Evaluate Reports"
+      function: "evaluate"
+      dependencies: ["extract"]
+      outputs: ["evaluations.json"]
+      parallel_with: ["plagiarism"]
+
+    plagiarism:
+      name: "Plagiarism Detection"
+      function: "detect_plagiarism"
+      dependencies: ["extract"]
+      outputs: ["plagiarism_results.json"]
+
+    report:
+      name: "Generate Report"
+      function: "generate_report"
+      dependencies: ["evaluate", "plagiarism"]
+      outputs: ["gradebook.xlsx"]
+
+# 路径配置（与 src/tools/common/path_config.py 的实际目录布局对齐）
+paths:
+  # 项目根目录
+  project_root: "../.."
+
+  # 教学数据目录（按 学期/班级/实验 组织）
+  teaching_dir: "data/teaching"
+
+  # 通用脚本目录（统一路径配置）
+  common_scripts: "src/tools/common"
+
+  # 工具目录
+  tools_dir: "src/tools/plagiarism"
+
+  # 模板目录
+  templates_dir: "data/templates"
+
+  # 评分标准目录
+  rubrics_dir: "data/rubrics"
+
+# 日志配置
+logging:
+  # 日志级别
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+  # 日志文件
+  file: "teaching_manager.log"
+
+  # 是否输出到控制台
+  console: true
+
+  # 日志格式
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

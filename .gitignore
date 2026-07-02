@@ -1,0 +1,168 @@
+# ========================================
+# IDE & Editor
+# ========================================
+/.vscode/launch.json
+/.vscode/settings.json.local
+/.settings
+/.eide/log
+/.eide.usr.ctx.json
+/.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ========================================
+# Build Outputs
+# ========================================
+/build/
+/bin/
+/obj/
+/out/
+*.o
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.d
+*.su
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+.pytype/
+.mypy_cache/
+
+# ========================================
+# Virtual Environments
+# ========================================
+venv/
+env/
+ENV/
+.venv
+
+# ========================================
+# GUI Application
+# ========================================
+tools/teaching_management_gui/dist/
+tools/teaching_management_gui/build/
+# PyInstaller spec 多为本地临时产物（如冒烟测试用），默认忽略；
+# 但学生端正式构建 spec 是可复现构建的必要配置，显式纳管。
+*.spec
+!build_student.spec
+
+# ========================================
+# Logs & Temporary
+# ========================================
+*.log
+*.tmp
+*.bak
+*.cache
+*.pid
+*.seed
+*.pid.lock
+# 临时调试/诊断脚本（不纳入版本管理）
+/debug_*.py
+/temp_*.py
+
+# ========================================
+# OS Generated
+# ========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========================================
+# Project Specific
+# ========================================
+# 学生提交的源代码（运行时数据，不入库；含解包后的 CubeMX 工程）
+data/teaching/**/source/
+
+# 学生原始提交压缩包（大文件，不入库）
+data/teaching/**/*.zip
+/*.汽服*.zip
+/汽服*.zip
+
+# 学生实验报告与系统生成结果（运行时产物，不入库；** 匹配 学期/班级/实验 任意深度）
+data/teaching/**/reports/
+data/teaching/**/results/
+# 评分/重跑前的本地结果备份（如 results_backup_prerubricfix），运行时产物
+data/teaching/**/results_backup*/
+data/teaching/*/*.xlsx
+# 花名册/成绩册 .xls（含真实学号/姓名，隐私数据，不入库）
+data/teaching/*/*.xls
+data/teaching/**/*.xls
+data/teaching/*/*.html
+
+# Outputs
+outputs/**/*.json
+outputs/**/*.xlsx
+outputs/**/*.xls
+outputs/**/*.png
+outputs/**/*.html
+outputs/**/*.csv
+outputs/**/*.docx
+outputs/**/*.txt
+outputs/**/*.py
+
+# CubeMX 厂商库（DSP/NN 信号/神经网络库，体积大且 .ioc 可重新生成，不入库）
+src/projects/*/cubemx/Drivers/CMSIS/DSP/
+src/projects/*/cubemx/Drivers/CMSIS/NN/
+
+# Keil DFP 器件支持包（EIDE/Keil 本地构建用，按机器安装，不入库）
+/.pack/
+
+# Model files (large)
+models/*.pkl
+models/*.h5
+models/*.pt
+
+# ========================================
+# EIDE Template
+# ========================================
+*.ept
+*.eide-template
+
+# Stray Excel/report artifacts written to CWD by teaching_scripts (should go to outputs/)
+src/tools/*.xlsx
+
+# 本地临时测试文件（不入库）
+/测试.txt
+
+# Keil/EIDE 自动生成的 RTE 头文件（构建时再生，不入库）
+/RTE_Components.h
+
+# 一次性重跑/诊断脚本（如下划线前缀的 rerun 脚本，不入库）
+scripts/_*.py

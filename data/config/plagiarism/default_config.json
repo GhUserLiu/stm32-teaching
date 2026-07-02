@@ -1,0 +1,30 @@
+{
+  "weights": {
+    "text": 0.5,
+    "code": 0.3,
+    "structure": 0.1,
+    "semantic": 0.1
+  },
+  "thresholds": {
+    "suspicious": 60.0,
+    "high_similarity": 70.0,
+    "plagiarism": 85.0,
+    "paraphrase_min": 50.0,
+    "paraphrase_max": 85.0,
+    "code_similar": 85.0,
+    "paragraph_similar": 80.0
+  },
+  "features": {
+    "enable_template_filter": true,
+    "enable_semantic_detection": true,
+    "enable_code_obfuscation": true,
+    "enable_ai_detection": false,
+    "enable_image_similarity": true,
+    "enable_jieba": true,
+    "semantic_method": "auto",
+    "prefer_embedding": false,
+    "ai_detection_threshold": 0.7
+  },
+  "group_info": {},
+  "template_content": ""
+}

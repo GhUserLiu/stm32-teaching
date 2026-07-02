@@ -1,0 +1,150 @@
+# STM32F407 嵌入式教学平台 - CI/CD 工作流
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # ========== STM32 构建测试 ==========
+  stm32-build:
+    name: STM32 Build Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 安装 ARM 工具链
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-none-eabi
+    
+    - name: 列出所有项目
+      run: make list
+    
+    - name: 构建默认项目
+      run: make
+    
+    - name: 构建所有项目
+      run: |
+        for proj in 01-turn-signal _template; do
+          echo "Building $proj..."
+          make PROJECT=$proj || echo "Warning: $proj build failed"
+        done
+    
+    - name: 检查输出文件
+      run: |
+        ls -la build/
+        ls -la build/*/debug/ || true
+
+  # ========== Python 代码检查 ==========
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort
+        pip install -r requirements.txt || true
+    
+    - name: 运行 flake8
+      run: |
+        flake8 tools/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 tools/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+    
+    - name: 检查代码格式
+      run: |
+        black --check tools/ || true
+    
+    - name: 检查 import 排序
+      run: |
+        isort --check-only tools/ || true
+
+  # ========== Python 单元测试 ==========
+  python-test:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        pip install -r requirements.txt || true
+    
+    - name: 运行测试
+      run: |
+        pytest tests/ -v --tb=short || true
+    
+    - name: 生成覆盖率报告
+      run: |
+        pytest tests/ --cov=tools --cov-report=xml || true
+
+  # ========== 安全检查 ==========
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: 安装安全工具
+      run: |
+        pip install safety bandit
+    
+    - name: 检查依赖漏洞
+      run: |
+        safety check --json || true
+    
+    - name: 安全扫描
+      run: |
+        bandit -r tools/ -f json || true
+
+  # ========== 文档构建 ==========
+  docs-build:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: 安装文档工具
+      run: |
+        pip install sphinx sphinx-rtd-theme
+    
+    - name: 检查文档链接
+      run: |
+        find docs/ -name "*.md" -exec echo "Checking: {}" \;
