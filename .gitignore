@@ -118,6 +118,8 @@ data/teaching/**/*.zip
 # 学生实验报告与系统生成结果（运行时产物，不入库；** 匹配 学期/班级/实验 任意深度）
 data/teaching/**/reports/
 data/teaching/**/results/
+# 查重等处理后的中间结果（含学生姓名/学号，隐私数据，不入库）
+data/teaching/**/processed/
 # 评分/重跑前的本地结果备份（如 results_backup_prerubricfix），运行时产物
 data/teaching/**/results_backup*/
 data/teaching/*/*.xlsx

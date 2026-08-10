@@ -13,6 +13,12 @@ from typing import List, Dict, Tuple, Optional, Set
 from enum import Enum
 from collections import Counter
 
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:  # 极少数无 numpy 环境：cosine_matrix 回退到逐对计算
+    HAS_NUMPY = False
+
 
 class SemanticMethod(Enum):
     """语义相似度计算方法"""
@@ -252,6 +258,101 @@ class TfidfCalculator:
 
         return dot_product / (norm1 * norm2)
 
+    def cosine_matrix(
+        self,
+        texts1: List[str],
+        texts2: List[str],
+        idf: Optional[Dict[str, float]] = None
+    ):
+        """
+        批量余弦相似度矩阵（性能优化）
+
+        数学上等价于对每对 (texts1[i], texts2[j]) 调用一次 cosine_similarity，但：
+        - 每段文本只分词一次（原实现 O(|texts1|*|texts2|) 次重复分词，是长报告上的主要瓶颈）；
+        - 相似度用一次矩阵乘得到。
+
+        Args:
+            texts1: 文本列表 1（行）
+            texts2: 文本列表 2（列）
+            idf: IDF 字典（默认用 idf_cache）
+
+        Returns:
+            shape=(len(texts1), len(texts2)) 的矩阵，元素为 0-1 的余弦相似度。
+            无 numpy 时回退为嵌套 list（行为不变，仅慢）。
+        """
+        idf = idf if idf is not None else self.idf_cache
+        processor = self.processor
+
+        # 每段文本只分词一次，复刻 calculate_tfidf 的权重计算（tf * idf.get(word, 0)）
+        def to_weighted(text):
+            tokens = processor.remove_stop_words(processor.tokenize(text))
+            if not tokens:
+                return {}
+            total = len(tokens)
+            counts = Counter(tokens)
+            return {
+                w: (c / total) * idf.get(w, 0.0)
+                for w, c in counts.items()
+                if idf.get(w, 0.0) != 0.0
+            }
+
+        rows1 = [to_weighted(t) for t in texts1]
+        rows2 = [to_weighted(t) for t in texts2]
+
+        # 无 numpy：逐对回退（结果与逐对 cosine_similarity 完全一致）
+        if not HAS_NUMPY:
+            return [
+                [
+                    self._weighted_cosine(r1, r2)
+                    for r2 in rows2
+                ]
+                for r1 in rows1
+            ]
+
+        # 统一词表索引（仅含权重非零的词，权重为 0 的词对点积/模长无贡献）
+        vocab = {}
+        for r in rows1 + rows2:
+            for w in r:
+                if w not in vocab:
+                    vocab[w] = len(vocab)
+
+        n1, n2, V = len(rows1), len(rows2), len(vocab)
+        if V == 0 or n1 == 0 or n2 == 0:
+            return np.zeros((n1, n2))
+
+        M1 = np.zeros((n1, V), dtype=np.float64)
+        M2 = np.zeros((n2, V), dtype=np.float64)
+        for i, r in enumerate(rows1):
+            for w, v in r.items():
+                M1[i, vocab[w]] = v
+        for j, r in enumerate(rows2):
+            for w, v in r.items():
+                M2[j, vocab[w]] = v
+
+        norms1 = np.linalg.norm(M1, axis=1)
+        norms2 = np.linalg.norm(M2, axis=1)
+        # 零向量（无有效词的句子）归一化为 0，相似度自然为 0，与 cosine_similarity 一致
+        N1 = np.divide(
+            M1, norms1[:, None], out=np.zeros_like(M1), where=(norms1[:, None] > 0)
+        )
+        N2 = np.divide(
+            M2, norms2[:, None], out=np.zeros_like(M2), where=(norms2[:, None] > 0)
+        )
+        return N1 @ N2.T
+
+    @staticmethod
+    def _weighted_cosine(w1: Dict[str, float], w2: Dict[str, float]) -> float:
+        """两个已加权 TF-IDF 字典的余弦相似度（无 numpy 回退路径用）。"""
+        if not w1 or not w2:
+            return 0.0
+        all_words = set(w1.keys()) | set(w2.keys())
+        dot = sum(w1.get(w, 0.0) * w2.get(w, 0.0) for w in all_words)
+        n1 = math.sqrt(sum(v * v for v in w1.values()))
+        n2 = math.sqrt(sum(v * v for v in w2.values()))
+        if n1 == 0 or n2 == 0:
+            return 0.0
+        return dot / (n1 * n2)
+
 
 class SemanticDetector:
     """语义相似度检测器"""
@@ -345,22 +446,32 @@ class SemanticDetector:
             sentences1 = processor.extract_sentences(text1)
             sentences2 = processor.extract_sentences(text2)
 
-            for i, sent1 in enumerate(sentences1):
-                for j, sent2 in enumerate(sentences2):
-                    sent_sim = self.tfidf_calculator.cosine_similarity(sent1, sent2)
+            # 性能优化：原实现逐对调用 cosine_similarity，每对都要重新分词 + 算 TF-IDF，
+            # 共 O(|S1|*|S2|) 次分词，长报告上数十分钟不收敛。
+            # 改为每句只分词一次，相似度矩阵用一次矩阵乘得到（数学等价、值完全相同）。
+            if sentences1 and sentences2:
+                sim_matrix = self.tfidf_calculator.cosine_matrix(sentences1, sentences2)
 
-                    if sent_sim > self.threshold:
-                        matched_segments.append({
-                            'text1': sent1[:50] + '...',
-                            'text2': sent2[:50] + '...',
-                            'similarity': sent_sim * 100,
-                            'position1': i,
-                            'position2': j
-                        })
+                for i, sent1 in enumerate(sentences1):
+                    for j, sent2 in enumerate(sentences2):
+                        # numpy 路径返回 ndarray（[i, j]）；无 numpy 回退返回嵌套 list（[i][j]）
+                        if hasattr(sim_matrix, 'shape'):
+                            sent_sim = float(sim_matrix[i, j])
+                        else:
+                            sent_sim = float(sim_matrix[i][j])
 
-                    if sent_sim > 0.5 and sent_sim < 0.9:
-                        paraphrased_sentences.append({
-                            'text1': sent1,
+                        if sent_sim > self.threshold:
+                            matched_segments.append({
+                                'text1': sent1[:50] + '...',
+                                'text2': sent2[:50] + '...',
+                                'similarity': sent_sim * 100,
+                                'position1': i,
+                                'position2': j
+                            })
+
+                        if sent_sim > 0.5 and sent_sim < 0.9:
+                            paraphrased_sentences.append({
+                                'text1': sent1,
                             'text2': sent2,
                             'similarity': sent_sim * 100
                         })
