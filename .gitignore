@@ -117,27 +117,27 @@ data/teaching/**/*.zip
 
 # 学生实验报告与系统生成结果（运行时产物，不入库；** 匹配 学期/班级/实验 任意深度）
 data/teaching/**/reports/
-data/teaching/**/results/
+# 结果目录通配：results/、results_backup*/、results_pre_rerun_* 等任意生成批次均含学生隐私。
+# 历史教训（2026-08）：results_pre_rerun_20260629 逃逸旧 results/ 模式，151 个含学号姓名文件入库。
+data/teaching/**/results*/
 # 查重等处理后的中间结果（含学生姓名/学号，隐私数据，不入库）
 data/teaching/**/processed/
-# 评分/重跑前的本地结果备份（如 results_backup_prerubricfix），运行时产物
-data/teaching/**/results_backup*/
-data/teaching/*/*.xlsx
-# 花名册/成绩册 .xls（含真实学号/姓名，隐私数据，不入库）
-data/teaching/*/*.xls
+# 课程档案（成绩单 PDF/任务书等，含学生隐私，不入库）
+data/teaching/**/课程档案/
+# 花名册/成绩册/成绩汇总 .xls(x)（含真实学号/姓名，隐私数据，不入库）。
+# 任意深度：docs/ 子目录下的成绩册曾逃逸旧的一级目录模式（2026-08 二次扫描发现）
+data/teaching/**/*.xlsx
 data/teaching/**/*.xls
 data/teaching/*/*.html
+# 查重分组名单（内容含学号+姓名，隐私数据，不入库）
+data/teaching/**/plagiarism_groups*.txt
 
-# Outputs
-outputs/**/*.json
-outputs/**/*.xlsx
-outputs/**/*.xls
-outputs/**/*.png
-outputs/**/*.html
-outputs/**/*.csv
-outputs/**/*.docx
-outputs/**/*.txt
-outputs/**/*.py
+# Outputs（运行时输出目录整体不入库；历史教训：按扩展名枚举漏掉 .md 等格式）
+outputs/
+
+# 运行时数据库（persistence 层，SQLite 本地库不入库）
+database/*.sqlite
+database/*.sqlite3
 
 # CubeMX 厂商库（DSP/NN 信号/神经网络库，体积大且 .ioc 可重新生成，不入库）
 src/projects/*/cubemx/Drivers/CMSIS/DSP/
@@ -168,3 +168,6 @@ src/tools/*.xlsx
 
 # 一次性重跑/诊断脚本（如下划线前缀的 rerun 脚本，不入库）
 scripts/_*.py
+
+# 本地环境变量（机器相关路径/密钥，不入库；模板见 .env.example）
+.env
