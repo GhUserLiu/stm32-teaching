@@ -49,6 +49,9 @@ pydantic>=2.5,<3            # schemas/ 严格校验（extra=forbid 防字段拼�
 PyYAML>=6.0                 # 读取 config/*.yaml（GUI path_helper 此前已隐式依赖但未声明）
 python-dotenv>=1.0,<2       # 可选：自动加载 .env；未安装时降级为仅读系统环境变量
 
+# ========== 持久化（src/persistence/，P4b-2 引入；SQLite 默认/PG 可切） ==========
+SQLAlchemy>=2.0,<3          # ORM（八表 ER：课程/班级/学生/任务书/提交/评分/存证）
+
 # ========== 安装说明 ==========
 #
 # 快速安装（所有依赖）:
