@@ -31,12 +31,15 @@ from tools.teaching_management_gui.path_helper import (  # noqa: E402
 from tools.common import atomic_write_json  # noqa: E402
 
 
-# UI 方法下拉项 → SimilarityMethod 的映射
+# UI 方法下拉项 → SimilarityMethod 的映射。
+# None 哨兵 = 分引擎模式（beta）：报告文字与代码走不同工厂引擎、阈值取自
+# 统一配置层，见 core.services.similarity_service；legacy 主链路不受影响。
 METHOD_MAP = {
     "结构相似度": SimilarityMethod.SEQUENCE,
     "文本相似度": SimilarityMethod.COSINE,
     "语义相似度": SimilarityMethod.SEMANTIC,
     "综合检测（推荐）": SimilarityMethod.HYBRID,
+    "分引擎检测（beta）": None,
 }
 
 
@@ -54,7 +57,7 @@ class PlagiarismWorker(QThread):
         self,
         entries,
         semester: str = "2026-春季",
-        method: SimilarityMethod = SimilarityMethod.HYBRID,
+        method: Optional[SimilarityMethod] = SimilarityMethod.HYBRID,
         threshold: float = 60.0,
         check_code: bool = True,
         check_report: bool = True,
@@ -63,7 +66,7 @@ class PlagiarismWorker(QThread):
         super().__init__()
         self.entries = list(entries)
         self.semester = semester
-        self.method = method
+        self.method = method    # None = 分引擎模式（beta）
         self.threshold = float(threshold)
         self.check_code = check_code
         self.check_report = check_report
@@ -71,11 +74,16 @@ class PlagiarismWorker(QThread):
         self.config.semester = semester
         self.is_cancelled = False
 
+    def _method_label(self) -> str:
+        if self.method is None:
+            return "分引擎(tfidf+code_template)"
+        return self.method.value
+
     def run(self):
         try:
             total = len(self.entries)
             self.log_message.emit(f"开始查重：共 {total} 个班级（含跨班级比对）")
-            self.log_message.emit(f"方法: {self.method.value} | 阈值: {self.threshold}")
+            self.log_message.emit(f"方法: {self._method_label()} | 阈值: {self.threshold}")
 
             facade = AutoGradingFacade(self.config)
 
@@ -106,19 +114,31 @@ class PlagiarismWorker(QThread):
                     entry.class_name, entry.experiment_id
                 )
                 for sub in submissions:
-                    text_parts: List[str] = []
-                    if self.check_report and getattr(sub, "report_text", ""):
-                        text_parts.append(sub.report_text)
-                    if self.check_code and getattr(sub, "code_blocks", None):
-                        text_parts.append("\n".join(sub.code_blocks))
-                    text = "\n\n".join(text_parts).strip()
-                    if not text:
-                        continue
-                    combined[sub.student_id] = {
-                        "name": sub.name,
-                        "text": text,
-                        "class": entry.class_name,
-                    }
+                    report_text = (getattr(sub, "report_text", "") or "") \
+                        if self.check_report else ""
+                    code_text = ("\n".join(sub.code_blocks)
+                                 if self.check_code
+                                 and getattr(sub, "code_blocks", None) else "")
+                    if self.method is None:
+                        # 分引擎模式：文字与代码分开喂服务（不再拼成一串）
+                        if not (report_text.strip() or code_text.strip()):
+                            continue
+                        combined[sub.student_id] = {
+                            "name": sub.name,
+                            "text": report_text,
+                            "code": code_text,
+                            "class": entry.class_name,
+                        }
+                    else:
+                        text_parts = [p for p in (report_text, code_text) if p]
+                        text = "\n\n".join(text_parts).strip()
+                        if not text:
+                            continue
+                        combined[sub.student_id] = {
+                            "name": sub.name,
+                            "text": text,
+                            "class": entry.class_name,
+                        }
                     class_map[sub.student_id] = entry.class_name
 
             if len(combined) < 2:
@@ -129,8 +149,16 @@ class PlagiarismWorker(QThread):
             self.progress.emit(60)
             self.log_message.emit(f"阶段2: 跨班级两两比对 {len(combined)} 份提交")
 
-            detector = PlagiarismDetector(method=self.method, threshold=self.threshold)
-            all_results, suspicious, adaptive_report = detector.detect(combined)
+            if self.method is None:
+                # 分引擎模式（beta）：文字/代码分引擎分阈值，阈值取统一配置层
+                from core.services.similarity_service import SimilarityService
+                service = SimilarityService()
+                all_results, suspicious, adaptive_report = service.detect(
+                    combined, log=self.log_message.emit)
+            else:
+                detector = PlagiarismDetector(
+                    method=self.method, threshold=self.threshold)
+                all_results, suspicious, adaptive_report = detector.detect(combined)
 
             # 阶段2 是阻塞调用；若期间请求了取消，检测完成后不再保存/发结果
             if self.is_cancelled:
@@ -201,7 +229,7 @@ class PlagiarismWorker(QThread):
         pairs.sort(key=lambda p: p["overall"], reverse=True)
         return {
             "classes": sorted({e.class_name for e in self.entries}),
-            "method": self.method.value,
+            "method": self._method_label(),
             "threshold": self.threshold,
             "total_students": len(combined),
             "pairs": pairs,

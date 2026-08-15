@@ -86,6 +86,14 @@ class ThresholdSettings(_Strict):
                 "(got %s <= %s <= %s)" % (self.suspicious,
                                           self.high_similarity,
                                           self.plagiarism))
+        if self.code_similar < self.high_similarity:
+            # similarity_service builds code bands as
+            # (code_similar, high_similarity); an inverted config would make
+            # the "plagiarism" bound sit BELOW the "suspicious" bound.
+            raise ValueError(
+                "require code_similar >= high_similarity (code confirmed "
+                "line must sit above the code suspicious line; got %s < %s)"
+                % (self.code_similar, self.high_similarity))
         if self.paraphrase_min >= self.paraphrase_max:
             raise ValueError("require paraphrase_min < paraphrase_max")
         return self

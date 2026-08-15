@@ -68,9 +68,10 @@ def test_import_workers():
     from tools.plagiarism.core.detector import SimilarityMethod
     assert GradingWorker is not None
     assert PlagiarismWorker is not None
-    # 方法映射覆盖四种 UI 选项
-    assert len(METHOD_MAP) == 4
+    # 方法映射覆盖四种 legacy UI 选项 + 分引擎模式（None 哨兵 → 服务路径）
+    assert len(METHOD_MAP) == 5
     assert METHOD_MAP["综合检测（推荐）"] == SimilarityMethod.HYBRID
+    assert METHOD_MAP["分引擎检测（beta）"] is None
 
 
 def test_auto_grading_all_exports():

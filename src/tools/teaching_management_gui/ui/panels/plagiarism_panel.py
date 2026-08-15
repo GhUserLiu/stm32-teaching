@@ -76,6 +76,9 @@ class PlagiarismPanel(QWidget):
         self.method_combo.addItem("文本相似度")
         self.method_combo.addItem("语义相似度")
         self.method_combo.addItem("综合检测（推荐）")
+        # 分引擎模式（beta）：文字/代码分引擎分阈值（配置驱动），详见
+        # core/services/similarity_service.py；其余选项走 legacy 链路不变
+        self.method_combo.addItem("分引擎检测（beta）")
         params.addWidget(self.method_combo)
         params.addWidget(QLabel("相似度阈值(%):"))
         self.threshold_spin = QLineEdit("60")
