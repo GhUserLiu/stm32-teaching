@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from tools.auto_grading import AutoGradingConfig
+from core.services.grading_service import build_auto_grading_config
 from tools.teaching_management_gui.workers.grading_worker import GradingWorker
 from tools.teaching_management_gui.ui.class_report_dialog import ClassReportDialog
 from tools.teaching_management_gui.data_source import shared
@@ -35,7 +35,8 @@ class GradingPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.config = AutoGradingConfig()
+        # 经统一配置层（config/base.yaml + schemas）桥接构造；值与旧默认 1:1（P1 parity 已验证）
+        self.config = build_auto_grading_config()
         self.all_results = []          # 跨班级合并的 GradingResult 列表
         self.all_failures = []         # per-student 评分失败清单（{student_id,name,...,error}）
         self.is_grading = False
