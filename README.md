@@ -68,10 +68,10 @@ stm32f407/
 
 | 功能 | 描述 | 模块 |
 |------|------|------|
-| **ZIP炸弹防护** | 文件大小/数量限制，路径遍历检查 | `tools/security/zip_validator.py` |
-| **路径验证** | 限制目录访问范围，防御路径遍历 | `tools/security/path_validator.py` |
-| **XXE防护** | 安全XML解析，防御外部实体注入 | `tools/security/xml_parser.py` |
-| **数据脱敏** | 保护学生隐私，支持报告匿名化 | `tools/security/anonymizer.py` |
+| **ZIP炸弹防护** | 文件大小/数量限制，路径遍历检查 | `src/tools/security/zip_validator.py` |
+| **路径验证** | 限制目录访问范围，防御路径遍历 | `src/tools/security/path_validator.py` |
+| **XXE防护** | 安全XML解析，防御外部实体注入 | `src/tools/security/xml_parser.py` |
+| **数据脱敏** | 保护学生隐私，支持报告匿名化 | `src/tools/security/anonymizer.py` |
 | **命令注入防护** | Makefile参数白名单验证 | `Makefile` |
 
 详细说明: [安全指南](docs/security/SECURITY_GUIDE.md)
@@ -80,13 +80,13 @@ stm32f407/
 
 ## 配置说明
 
-### 硬件固定配置 (`common/bsp/board.h`)
+### 硬件固定配置 (`src/common/bsp/board.h`)
 开发板固定的引脚分配，**无需修改**：
 - LED0/LED1 位置
 - 按键位置
 - 可用 GPIO 列表
 
-### 项目特定配置 (`projects/XX/config.h`)
+### 项目特定配置 (`src/projects/XX/config.h`)
 根据项目需求配置：
 - 按键触发方式（高/低电平）
 - 时序参数
@@ -129,18 +129,18 @@ make help
 ### 方法一：使用脚本（推荐）
 
 ```bash
-bash tools/scripts/new_project.sh 02 my-project
+bash src/tools/scripts/new_project.sh 02 my-project
 ```
 
 ### 方法二：手动创建
 
 ```bash
 # 1. 复制模板
-cp -r projects/_template projects/02-your-project
+cp -r src/projects/_template src/projects/02-your-project
 
-# 2. 修改 projects/02-your-project/config.h
+# 2. 修改 src/projects/02-your-project/config.h
 
-# 3. 编写 projects/02-your-project/main.c
+# 3. 编写 src/projects/02-your-project/main.c
 
 # 4. 构建
 make PROJECT=02-your-project
@@ -154,9 +154,9 @@ make PROJECT=02-your-project
 
 | 编号 | 项目 | 说明 | 状态 | 文档 |
 |------|------|------|------|------|
-| 01 | [转向灯系统](projects/01-turn-signal/) | LED 转向灯控制 | ✅ 完成 | [硬件配置](projects/01-turn-signal/docs/HARDWARE_CONFIG.md) |
-| 07 | [汽车档位](projects/07-car-gear/) | 档位显示模拟器 (CubeMX) | ✅ 完成 | - |
-| - | [项目模板](projects/_template/) | 新项目模板 | - | - |
+| 01 | [转向灯系统](src/projects/01-turn-signal/) | LED 转向灯控制 | ✅ 完成 | [硬件配置](src/projects/01-turn-signal/docs/HARDWARE_CONFIG.md) |
+| 07 | [汽车档位](src/projects/07-car-gear/) | 档位显示模拟器 (CubeMX) | ✅ 完成 | - |
+| - | [项目模板](src/projects/_template/) | 新项目模板 | - | - |
 
 ---
 
@@ -177,9 +177,9 @@ make PROJECT=02-your-project
 
 | 脚本 | 说明 |
 |------|------|
-| `tools/scripts/new_project.sh` | 快速创建新项目 |
-| `tools/scripts/switch_project.sh` | 切换 EIDE 活动项目 |
-| `tools/scripts/check_syntax.sh` | C 代码语法检查 |
+| `src/tools/scripts/new_project.sh` | 快速创建新项目 |
+| `src/tools/scripts/switch_project.sh` | 切换 EIDE 活动项目 |
+| `src/tools/scripts/check_syntax.sh` | C 代码语法检查 |
 
 ---
 
@@ -233,7 +233,8 @@ pip install -r requirements.txt
 pip install python-docx openpyxl jieba
 ```
 
-详细说明: [安装指南](tools/INSTALL.md)
+> 注：`requirements.txt` 中的 `sentence-transformers` 为可选语义检测依赖
+> （会拉取 torch，体积较大）；不安装时语义引擎自动降级，核心批阅不受影响。
 
 ### 安装工具链
 

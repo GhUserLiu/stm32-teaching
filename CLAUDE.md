@@ -45,15 +45,25 @@ stm32f407/
 │   │   ├── 07-car-gear/         # 汽车档位模拟器（CubeMX 项目）
 │   │   └── Test6/               # 示例项目（CubeMX）
 │   │
-│   └── tools/                    # 教学管理工具（Python）
+│   └── tools/                    # 教学管理工具（Python，legacy 算法/引擎层）
 │       ├── plagiarism/           # 查重检测系统（核心）
 │       ├── auto_grading/         # 自动化批阅（核心逻辑，无 GUI）
 │       ├── teaching_management_gui/  # 教学管理桌面应用（PyQt6）
 │       ├── student_submission_gui/   # 学生端提交应用
 │       ├── security/            # 安全工具（路径/ZIP/XML/脱敏）
-│       ├── teaching_scripts/    # 教学处理脚本
+│       ├── teaching_scripts/    # 教学处理脚本（legacy，P5 淘汰对象）
 │       └── scripts/             # 通用辅助脚本
 │
+│   # ---- 2026-08 重构新增的分层（绞杀者模式：旧 tools/ 保持可用）----
+│   ├── core/                    # 服务层（Qt-free 业务编排，可独立单测）
+│   │   └── services/            #   grading_service / similarity_service / result_importer
+│   ├── algorithms/              # 查重引擎族（base 契约 + factory 注册表 + text/ + code/）
+│   ├── parsers/                 # 输入解析（KeilProjectParser：.uvprojx → 用户源码）
+│   ├── schemas/                 # Pydantic 严格校验（统一配置层入口）
+│   └── persistence/             # SQLAlchemy 八表 ER + engine/session
+│
+├── config/                       # 统一配置（base.yaml 唯一真源，<env>.yaml 覆盖）
+├── database/                     # 运行时 SQLite（不入库；含 -wal/-journal 边车）
 ├── data/                         # 数据目录
 │   ├── config/                   # 配置文件
 │   │   ├── teaching/            # 教学系统配置
@@ -61,7 +71,6 @@ stm32f407/
 │   │   └── security/            # 安全配置
 │   ├── rubrics/                  # 评分标准
 │   ├── templates/                # 模板文件（实验报告模板等）
-│   ├── resources/                # 资源文件（图标等）
 │   └── teaching/                 # 教学业务数据
 │       └── 2026-春季/           # 按学期组织的数据
 │
@@ -157,6 +166,7 @@ Error_Handler_WithCode(ERR_UART_INIT);
 
 #### 非阻塞延时（推荐）
 ```c
+// debounce.h 为 01-turn-signal 的项目本地实现（src/common 暂无共享版）
 #include "debounce.h"
 
 // 使用状态机替代 HAL_Delay
@@ -181,11 +191,33 @@ detector = PlagiarismDetector(
 results = detector.detect(submissions)
 ```
 
-#### 自动化批阅GUI应用
+#### 教学管理 GUI（教师端）
 
 ```bash
-python src/tools/auto_grading_gui/main.py
+# Windows：双击 启动教学管理系统.bat（自动设 PYTHONPATH=src 并 cd 到仓库根）
+python src/tools/teaching_management_gui/main.py
 ```
+
+#### 统一配置层与服务层（2026-08 重构新增）
+
+- **配置唯一真源**是 `config/base.yaml`，由 `src/schemas/`（pydantic，
+  `extra=forbid`）加载校验；覆盖链 `base.yaml <- <env>.yaml <-
+  APP_<SECTION>__<FIELD>` 环境变量。**拼错字段会在启动时报错**（不允许
+  静默死配置）；阈值等运行值改这里，不要再改 dataclass 默认值。
+- **服务层** `src/core/services/`（Qt-free）：`grading_service`（批阅
+  管线编排，GUI worker 只做 Qt 胶水）、`similarity_service`（分引擎
+  查重——GUI 方法下拉"分引擎检测（beta）"）、`result_importer`
+  （JSON 产物回填数据库）。
+- **查重引擎** `src/algorithms/`：工厂注册（`@register_checker`），
+  代码/文字分模态分阈值；新引擎实现 `BaseSimilarityChecker` 契约
+  （0-100 刻度、空输入 0、矩阵对角显式置 100）。
+- **Keil 解析** `src/parsers/`：`.uvprojx` → 用户源码（厂商目录/
+  CubeMX 系统文件剔除，GBK 兼容，出树路径防读）；keil 型提交的源码
+  收集已接入门控（`submission_processor._collect_user_sources_via_keil`，
+  解析失败自动回退盲扫）。
+- **持久化** `src/persistence/`（SQLite 默认 `database/teaching.sqlite`）；
+  历史结果回填：`python scripts/backfill_from_results.py --dry-run` 预览，
+  去掉 `--dry-run` 落库（幂等可重跑）。
 
 ---
 
@@ -243,8 +275,8 @@ python src/tools/auto_grading_gui/main.py
 
 ### Python 依赖
 ```bash
-# 核心依赖（必需）
-pip install python-docx openpyxl defusedxml
+# 核心依赖（必需；含统一配置层 pydantic/PyYAML 与持久化 SQLAlchemy）
+pip install python-docx openpyxl defusedxml pydantic PyYAML SQLAlchemy
 
 # 推荐依赖（中文分词）
 pip install jieba
@@ -259,7 +291,7 @@ pip install sentence-transformers Pillow
 
 ### 编译问题
 - **错误: 未定义的引用**: 检查是否链接了所有源文件
-- **错误: 启动文件找不到**: 检查 Makefile 第 183 行的文件名
+- **错误: 启动文件找不到**: 检查 Makefile 第 184 行的文件名
 - **Flash 大小超限**: 使用 `make size` 查看内存使用
 
 ### 运行时问题
@@ -275,6 +307,9 @@ pip install sentence-transformers Pillow
 
 ## 版本历史
 
+- **v3.0.0** (2026-08-15): 架构重构——统一配置层（schemas）、服务层（core/services）、
+  查重引擎族（algorithms 工厂）、Keil 解析（parsers）、持久化与 JSON 回填（persistence）；
+  PII 治理（153 文件出库 + filter-repo 方案）
 - **v2.5.0** (2024-06-11): 安全增强版，添加完整安全防护
 - **v2.4.0** (2024-05-30): 配置化权重、增强语义检测
 - **v2.0.0** (2024-04-20): 模块化架构重构
@@ -288,4 +323,4 @@ pip install sentence-transformers Pillow
 
 ---
 
-**最后更新**: 2026-06-12
+**最后更新**: 2026-08-15

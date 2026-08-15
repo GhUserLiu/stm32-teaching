@@ -431,7 +431,7 @@ def main():
             from enhanced_feedback import EnhancedFeedbackGenerator, save_enhanced_feedback
 
             generator = EnhancedFeedbackGenerator()
-            feedback_dir = PROCESSED_DIR / "enhanced_feedback"
+            feedback_dir = paths.processed_dir / "enhanced_feedback"
             feedback_dir.mkdir(exist_ok=True)
 
             for i, content in enumerate(extracted_data):

@@ -10,9 +10,13 @@ import re
 import hashlib
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Set, Tuple
+from typing import List, Dict, Optional, Set, Tuple, TYPE_CHECKING
 from collections import defaultdict
 from enum import Enum
+
+if TYPE_CHECKING:
+    # Type-only import: keeps the runtime import graph unchanged
+    from ..utils.config import PlagiarismConfig
 
 try:
     import numpy as np

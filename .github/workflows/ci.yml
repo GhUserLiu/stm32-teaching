@@ -12,139 +12,121 @@ jobs:
   stm32-build:
     name: STM32 Build Test
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-    
+
     - name: 安装 ARM 工具链
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-arm-none-eabi
-    
+
     - name: 列出所有项目
       run: make list
-    
+
     - name: 构建默认项目
       run: make
-    
+
     - name: 构建所有项目
       run: |
         for proj in 01-turn-signal _template; do
           echo "Building $proj..."
           make PROJECT=$proj || echo "Warning: $proj build failed"
         done
-    
+
     - name: 检查输出文件
       run: |
         ls -la build/
         ls -la build/*/debug/ || true
 
   # ========== Python 代码检查 ==========
+  # 2026-08 修复：旧配置检查 tools/（仓库根下不存在）→ 空跑；
+  # 且全部 || true 吞错。现在路径为 src/，错误级检查必须红。
   python-lint:
     name: Python Lint
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-    
+
     - name: 设置 Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
         pip install flake8 black isort
-        pip install -r requirements.txt || true
-    
-    - name: 运行 flake8
+
+    - name: 运行 flake8（错误级：语法/未定义名，失败即红）
       run: |
-        flake8 tools/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 tools/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
-    
-    - name: 检查代码格式
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: flake8 风格报告（仅统计，不阻断）
       run: |
-        black --check tools/ || true
-    
-    - name: 检查 import 排序
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+
+    - name: 检查代码格式（存量代码未全量格式化，仅报告）
       run: |
-        isort --check-only tools/ || true
+        black --check src/ || true
+
+    - name: 检查 import 排序（同上，仅报告）
+      run: |
+        isort --check-only src/ || true
 
   # ========== Python 单元测试 ==========
+  # 2026-08 修复：去掉 || true（测试失败必须红）；覆盖 src/tools 而非 tools。
+  # 依赖为显式核心清单：sentence-transformers（会拉 torch，~GB 级）刻意
+  # 不装——语义引擎设计为缺依赖时优雅降级，不影响 529 项测试。
   python-test:
     name: Python Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-    
+
     - name: 设置 Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-cov
-        pip install -r requirements.txt || true
-    
-    - name: 运行测试
-      run: |
-        pytest tests/ -v --tb=short || true
-    
-    - name: 生成覆盖率报告
-      run: |
-        pytest tests/ --cov=tools --cov-report=xml || true
+        pip install pytest \
+          python-docx openpyxl xlrd defusedxml \
+          numpy pandas jieba \
+          pydantic PyYAML python-dotenv SQLAlchemy \
+          py7zr Pillow reportlab PyQt6
 
-  # ========== 安全检查 ==========
+    - name: 运行测试
+      env:
+        QT_QPA_PLATFORM: offscreen
+      run: |
+        python -m pytest tests/unit tests/student -q
+
+  # ========== 安全检查（报告级） ==========
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-    
+
     - name: 设置 Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: 安装安全工具
       run: |
-        pip install safety bandit
-    
-    - name: 检查依赖漏洞
-      run: |
-        safety check --json || true
-    
-    - name: 安全扫描
-      run: |
-        bandit -r tools/ -f json || true
+        pip install bandit
 
-  # ========== 文档构建 ==========
-  docs-build:
-    name: Documentation Build
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-    
-    - name: 设置 Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: 安装文档工具
+    - name: 安全扫描（存量代码存在已知告警，报告级）
       run: |
-        pip install sphinx sphinx-rtd-theme
-    
-    - name: 检查文档链接
-      run: |
-        find docs/ -name "*.md" -exec echo "Checking: {}" \;
+        bandit -r src/ -f json || true

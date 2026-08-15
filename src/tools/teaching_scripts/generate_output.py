@@ -36,7 +36,6 @@ def load_plagiarism_students(plagiarism_threshold: float = 80.0) -> Set[str]:
     Returns:
         抄袭学生学号集合
     """
-    global paths
     plagiarism_students = set()
 
     # 尝试从多个可能的路径加载查重结果
