@@ -1,0 +1,130 @@
+# ============================================================
+# 统一配置入口（由 src/schemas/config.py 加载并严格校验）
+# Unified configuration entry, loaded & validated by src/schemas/config.py
+#
+# 加载链（后者覆盖前者）：
+#   config/base.yaml  <-  config/<env>.yaml  <-  APP_* 环境变量 / .env
+#
+# 字段名刻意与三处 legacy 真源对齐，便于消费方逐个迁移：
+#   src/tools/auto_grading/config.py      (AutoGradingConfig dataclass)
+#   src/tools/plagiarism/utils/config.py  (PlagiarismConfig dataclass)
+#   data/config/teaching/config.yaml      (GUI 侧 advisory yaml，部分已死)
+#
+# 已知漂移处理：legacy yaml 写 high_risk: 75，运行时 dataclass 为
+#   high_similarity: 70 —— 以运行时值为准（本文件 70），字段名统一为
+#   high_similarity。
+# ============================================================
+
+teaching:
+  semester: "2026-春季"          # data/teaching/ 下的学期目录名
+  classes:
+    汽服2302B班:
+      code: "auto2302b"
+      students_file: "students/汽服2302B班.xlsx"
+      submission_dir: "submissions/"
+      group_file: "groups/汽服2302B班.json"
+    # 按同样格式追加其它班级，例如：
+    # 汽服2301B班:
+    #   code: "auto2301b"
+    #   students_file: "students/汽服2301B班.xlsx"
+
+  experiments:
+    07-car-gear:
+      name: "汽车档位模拟器设计"
+      code: "07_car_gear_experiment"
+      template_path: "templates/07-car-gear-template.docx"
+      rubric_path: "rubrics/rubric.json"
+      description: "基于STM32F407的汽车档位模拟器设计与实现"
+      # due_date 未迁移：legacy config.yaml 中的 2025-04-30 已过期失真，
+      # 需要时按下述格式填写（ISO 日期）：
+      # due_date: "2026-05-08"
+    final-project:
+      name: "期末综合项目（多功能嵌入式系统综合设计）"
+      code: "final_project"
+      rubric_path: "rubrics/final-project.json"
+      description: "三选一综合设计；功能实现由教师实测评定，不在自检预测分内"
+
+paths:
+  # 只配置根路径；学期/班级/实验的派生布局仍由 src/tools/common/path_config.py
+  # 在运行时计算（data/teaching/<学期>/<班级>/<实验>/{submissions,processed,results/...}）
+  teaching_dir: "data/teaching"
+  templates_dir: "data/templates"
+  rubrics_dir: "data/rubrics"
+
+plagiarism:
+  weights:                      # 四维权重，总和必须为 1
+    text: 0.5
+    code: 0.3
+    structure: 0.1
+    semantic: 0.1
+  thresholds:                   # 0-100，需满足 suspicious <= high_similarity <= plagiarism
+    suspicious: 60              # 可疑阈值（开始标记）
+    high_similarity: 70         # 高相似度（legacy yaml 曾写 75，见文件头说明）
+    plagiarism: 85              # 抄袭阈值（确认抄袭）
+    paraphrase_min: 50          # 改写检测区间下界
+    paraphrase_max: 85          # 改写检测区间上界
+    code_similar: 85            # 代码相似阈值
+    paragraph_similar: 80       # 段落相似阈值
+  features:
+    enable_template_filter: true
+    enable_semantic_detection: true
+    semantic_method: "auto"     # auto | tfidf | embedding
+    prefer_embedding: false     # 嵌入模型需 sentence-transformers（可选依赖）
+    enable_jieba: true
+    enable_code_obfuscation: true
+    enable_ai_detection: false  # 实验性
+    ai_detection_threshold: 0.7
+    enable_image_similarity: true
+
+grading:
+  toolchain:
+    gcc_enabled: true
+    make_path: "make"
+    arm_none_eabi_prefix: "arm-none-eabi-"
+    keil_enabled: false         # Keil UV4 编译默认关闭（与 build_checker 现状一致）
+    keil_uv4_path: null         # 例如 "C:\\Keil_v5\\UV4\\UV4.exe"
+    build_timeout: 60           # 秒
+  project:
+    allowed_projects: ["01-turn-signal", "07-car-gear", "_template", "Test6"]
+    project_types:
+      01-turn-signal: "simple"
+      07-car-gear: "cubemx"
+      _template: "simple"
+      Test6: "simple"
+  security:
+    max_zip_size_mb: 100
+    max_file_count: 1000
+    allowed_extensions: [".c", ".h", ".cpp", ".hpp", ".zip",
+                         ".docx", ".doc", ".pdf", ".png", ".jpg"]
+    allow_absolute_paths: false
+    allow_parent_references: false
+  scoring:
+    enable_semantic_scoring: true
+    quality_weight: 0.2
+    aggregation_method: "weighted"   # weighted | max | min | average
+    scale:
+      A: {min: 90, max: 100, label: "优"}
+      B: {min: 80, max: 89, label: "良"}
+      C: {min: 70, max: 79, label: "中"}
+      D: {min: 60, max: 69, label: "及格"}
+      F: {min: 0, max: 59, label: "不及格"}
+
+output:
+  default_format: "excel"       # excel | pdf | html
+  detailed_report: true
+  include_feedback: true
+  language: "zh-CN"
+  # output_dir 不迁移：产物目录布局统一由 path_config.py 派生（results/{reports,feedback,grading,plagiarism}）
+
+workflow:
+  enable_resume: true
+  state_file: ".workflow_state.json"
+  enable_parallel: true
+  max_parallel_tasks: 4
+  # stages 不迁移：legacy workflow 阶段表仅服务于 teaching_scripts 旧管线（P5 淘汰对象）
+
+logging:
+  level: "INFO"                 # DEBUG | INFO | WARNING | ERROR
+  file: "teaching_manager.log"
+  console: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
