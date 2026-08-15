@@ -56,6 +56,35 @@ def test_comment_only_code_normalizes_to_empty():
     assert normalized_token_string("// nothing here\n/* nothing at all */") == ""
 
 
+# ------------------------------------------- adversarial-review regressions
+
+def test_unterminated_block_comment_swallows_to_eof():
+    # D1 regression: interior must NOT leak as code tokens
+    tokens = tokenize_c("int a = 1;\n/* never closed\nint leaked = 42;\n")
+    assert tokens == ["int", "a", "=", "NUM", ";"]
+
+
+def test_unterminated_string_masks_to_end_of_line():
+    # D1 regression: unclosed string swallows to EOL as one STR token
+    tokens = tokenize_c('printf("never closed; x = 1;\nint ok = 2;\n')
+    assert tokens == ["printf", "(", "STR", "int", "ok", "=", "NUM", ";"]
+
+
+def test_preprocessor_strip_is_comment_aware():
+    # D2 regression: '*/' sharing a '#' directive line (commented-out
+    # include block) must survive -- otherwise the comment turns
+    # unterminated and the rest of the file leaks.
+    code = "int a = 1;\n/* commented-out directives\n#endif_of_comment */\nint b = 2;\n"
+    assert tokenize_c(code) == ["int", "a", "=", "NUM", ";",
+                                "int", "b", "=", "NUM", ";"]
+
+
+def test_multiline_macro_continuation_lines_dropped():
+    code = "#define MAX(a,b) \\\n    ((a) > (b) ? (a) : (b))\nint t = MAX(1,2);\n"
+    assert tokenize_c(code) == ["int", "t", "=", "MAX",
+                                "(", "NUM", ",", "NUM", ")", ";"]
+
+
 # ------------------------------------------------------------- code_token
 
 BLINK_A = """
@@ -193,19 +222,29 @@ def _templated():
 def test_template_removal_lowers_cross_student_score():
     """核心价值：共享样板（HAL/寄存器初始化 + main 脚手架）不算抄袭信号。
 
-    实测本语料：81.4（不剔除）→ 60.5（剔除后）。残余相似度来自两人共用
-    同一 LED（GPIOA/GPIO_PIN_5）与括号结构——控制逻辑不同（toggle 循环
-    vs 按键读取），60.5 正确落在可疑线（60）之下、实锤线（85）远之外。
+    实测本语料：81.4（不剔除）→ 55.6（剔除+孤括号行清理后）。残余相似
+    度来自两人共用同一 LED（GPIOA/GPIO_PIN_5）与括号结构——控制逻辑不
+    同（toggle 循环 vs 按键读取），55.6 正确落在可疑线（60）之下、实
+    锤线（85）之外。
     """
     plain = _plain().score(STUDENT_A, STUDENT_B)
     templated = _templated().score(STUDENT_A, STUDENT_B)
     assert templated < plain
-    assert templated < 65.0, "shared boilerplate should not dominate"
+    assert templated < 60.0, "shared boilerplate should not reach suspicious line"
     assert templated > 0.0   # same-peripheral logic still shows real overlap
 
 
 def test_template_identical_work_still_100():
     assert _templated().score(STUDENT_A, STUDENT_A) == 100.0
+
+
+def test_pure_template_submissions_score_zero():
+    """R1 回归：仅模板内容（改了引脚/模式，零学生逻辑）的两份提交
+    不得因残留大括号得 100 分——孤括号行剔除后归一化为空 → 0。"""
+    tpl_a = TEMPLATE
+    tpl_b = (TEMPLATE.replace("GPIO_PIN_5", "GPIO_PIN_7")
+                     .replace("GPIO_MODE_OUTPUT_PP", "GPIO_MODE_OUTPUT_OD"))
+    assert _templated().score(tpl_a, tpl_b) == 0.0
 
 
 def test_empty_template_behaves_like_code_token():

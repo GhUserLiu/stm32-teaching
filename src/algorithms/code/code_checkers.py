@@ -28,12 +28,17 @@ pinned by tests/unit/test_code_checkers.py):
     option; the similarity_service will load it from experiment config.
 
 Tokenizer notes (deliberate heuristics, documented):
-  * preprocessor lines (``#include`` / ``#define`` ...) are dropped before
-    tokenizing -- pure boilerplate for similarity purposes;
+  * two-pass pipeline: comments are stripped FIRST (string-aware, line
+    count preserved), then directive lines (``#include`` / ``#define`` ...
+    incl. backslash continuations) are dropped, then the token scan runs;
+  * unterminated block comments swallow to EOF and unterminated strings
+    swallow to end-of-line -- neither can leak its interior as code tokens
+    (both were adversarial-review findings on truncated/malformed input);
   * string literals -> ``STR``, char literals -> ``CHR``, numeric literals
     -> ``NUM`` (mask_strings=True default);
-  * the scanner is string-aware: ``printf("// not a comment")`` keeps its
-    string intact;
+  * known limitation: difflib's length-normalized ratio on 1-2 token
+    streams scores unrelated pairs 60-86 ("a;" vs "b;") -- near-empty
+    submissions are flagged by validation long before thresholds matter;
   * both checkers override ``preprocess`` (ContentKind.CODE contract -- the
     base whitespace-collapse would swallow code after ``//`` comments).
 """
@@ -47,9 +52,20 @@ from algorithms.base import BaseSimilarityChecker, ContentKind
 from algorithms.factory import register_checker
 from tools.plagiarism.core.algorithms import sequence_similarity
 
-# One master scanner: whitespace / comments / strings / chars / numbers /
+# Pass-1 scanner: comments only (string-aware). Unterminated block comments
+# are swallowed to EOF so their interior can NEVER leak as code tokens
+# (first adversarial review: finditer would re-lex the interior otherwise).
+_COMMENT_SCANNER = re.compile(r'''
+    (?P<string>"(?:\\.|[^"\\\n])*")
+  | (?P<char>'(?:\\.|[^'\\\n])')
+  | (?P<comment>//[^\n]*|/\*(?:[^*]|\*(?!/))*\*/)
+  | (?P<unterminated_block>(?s:/\*.*))
+''', re.VERBOSE)
+
+# Pass-2 master scanner: whitespace / strings / chars / numbers /
 # identifiers / multi-char operators / punctuation, longest-first where it
-# matters. Block comments match without DOTALL via (?:[^*]|\*(?!/))*.
+# matters. The unterminated-string fallback (no closing quote on the line)
+# must stay AFTER the terminated alternative.
 _TOKEN_SCANNER = re.compile(r'''
     (?P<ws>\s+)
   | (?P<comment>//[^\n]*|/\*(?:[^*]|\*(?!/))*\*/)
@@ -59,25 +75,68 @@ _TOKEN_SCANNER = re.compile(r'''
   | (?P<ident>[A-Za-z_]\w*)
   | (?P<op><<=|>>=|->|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\+=|-=|\*=|/=|%=|&=|\^=|\|=)
   | (?P<punct>[{}\[\]();,.?:!~<>=+\-*/%&|^])
+  | (?P<unterminated_string>"(?:\\.|[^"\\\n])*)
 ''', re.VERBOSE)
 
 
+def _strip_comments(code: str) -> str:
+    """Remove comments (string-aware), preserving the line count.
+
+    Comments are replaced by as many newlines as they contained, so
+    line-based preprocessor stripping afterwards still sees the true line
+    structure -- a '*/' sharing a '#' directive line (valid C: commented-out
+    include blocks) must NOT be deleted, or the comment turns unterminated
+    and everything after it leaks (second adversarial-review defect).
+    Strings and char literals pass through untouched.
+    """
+    parts = []
+    pos = 0
+    for match in _COMMENT_SCANNER.finditer(code):
+        parts.append(code[pos:match.start()])
+        if match.lastgroup in ("comment", "unterminated_block"):
+            parts.append("\n" * match.group().count("\n"))
+        else:                                   # string / char: keep verbatim
+            parts.append(match.group())
+        pos = match.end()
+    parts.append(code[pos:])
+    return "".join(parts)
+
+
 def strip_preprocessor(code: str) -> str:
-    """Drop lines starting with '#' (after leading whitespace)."""
-    return "\n".join(
-        line for line in code.splitlines()
-        if not line.lstrip().startswith("#"))
+    """Drop directive lines ('#' after leading whitespace).
+
+    Honors backslash-newline continuations: a dropped directive line ending
+    in a backslash also drops its continuation lines (multi-line macros).
+    Call AFTER _strip_comments -- a '*/' sharing a directive line must
+    survive, and only the comment-free text makes '#'-line detection safe.
+    """
+    kept = []
+    dropping = False
+    for line in code.splitlines():
+        if dropping:
+            dropping = line.rstrip().endswith("\\")
+            continue
+        if line.lstrip().startswith("#"):
+            dropping = line.rstrip().endswith("\\")
+            continue
+        kept.append(line)
+    return "\n".join(kept)
 
 
 def tokenize_c(code: str, mask_strings: bool = True) -> List[str]:
-    """Tokenize C source; comments/whitespace vanish, literals may mask."""
-    code = strip_preprocessor(code)
+    """Tokenize C source; comments/whitespace vanish, literals may mask.
+
+    Pipeline (each stage fixed an adversarial-review defect):
+    _strip_comments (line-preserving, string-aware) ->
+    strip_preprocessor (continuation-aware) -> token scan.
+    """
+    code = strip_preprocessor(_strip_comments(code))
     tokens: List[str] = []
     for match in _TOKEN_SCANNER.finditer(code):
         kind = match.lastgroup
-        if kind in ("ws", "comment"):
+        if kind in ("ws", "comment", "unterminated_block"):
             continue
-        if kind == "string":
+        if kind in ("string", "unterminated_string"):
             tokens.append("STR" if mask_strings else match.group())
         elif kind == "char":
             tokens.append("CHR" if mask_strings else match.group())
@@ -144,6 +203,14 @@ class TemplateCodeChecker(BaseSimilarityChecker):
     def preprocess(self, code: str) -> str:
         if self._filter is not None:
             code = self._filter.filter(code + "\n").filtered_text
+            # Line-based removal leaves the template's brace-only lines
+            # behind in every document. Drop them: two submissions that are
+            # NOTHING but the template then normalize to empty (score 0 via
+            # the central empty guard) instead of a brace-residue 100, and
+            # real submissions gain K&R/Allman brace-style invariance.
+            code = "\n".join(
+                line for line in code.splitlines()
+                if line.strip() and not re.fullmatch(r"[{}\s]+", line))
         return normalized_token_string(code, mask_strings=self._mask)
 
     def compare(self, left: str, right: str) -> float:
