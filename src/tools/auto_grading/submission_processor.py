@@ -180,7 +180,11 @@ class SubmissionProcessor:
         Args:
             base_dir: 基础目录（例如：data/teaching/2026-春季/）
         """
-        self.base_dir = Path(base_dir)
+        # 统一 resolve 成绝对路径：Keil 门控（_collect_user_sources_via_keil）
+        # 返回 resolved 绝对路径，若 base_dir 保持相对形式，下游
+        # grading_engine 的 f.relative_to(source_path) 会逐文件失败，
+        # 学生有违规反而拿满分（对抗审查实测的分数反转）。
+        self.base_dir = Path(base_dir).resolve()
 
     def process_class_submissions(
         self,
@@ -471,19 +475,30 @@ class SubmissionProcessor:
         source_files = []
         header_files = []
         main_files = []
-
-        for ext in self.SOURCE_EXTENSIONS:
-            source_files.extend(project_path.rglob(f"*{ext}"))
-
-        for ext in self.HEADER_EXTENSIONS:
-            header_files.extend(project_path.rglob(f"*{ext}"))
-
-        # 查找主程序文件
         main_patterns = ['main.c', 'main.cpp', 'main.cc', 'main_interrupt.c']
-        for pattern in main_patterns:
-            main_candidates = list(project_path.rglob(pattern))
-            if main_candidates:
-                main_files.extend(main_candidates)
+
+        # Keil 工程：经 KeilProjectParser 提取用户源码——盲扫会把整个
+        # Drivers/CMSIS 厂商树收进来，淹没用户逻辑（汽车学院 CAN/SPI
+        # 驱动代码信号）。解析失败/无用户文件时回退盲扫，绝不更糟。
+        gated = (
+            project_type == "keil"
+            and self._collect_user_sources_via_keil(
+                project_path, main_patterns,
+                source_files, header_files, main_files)
+        )
+
+        if not gated:
+            for ext in self.SOURCE_EXTENSIONS:
+                source_files.extend(project_path.rglob(f"*{ext}"))
+
+            for ext in self.HEADER_EXTENSIONS:
+                header_files.extend(project_path.rglob(f"*{ext}"))
+
+            # 查找主程序文件
+            for pattern in main_patterns:
+                main_candidates = list(project_path.rglob(pattern))
+                if main_candidates:
+                    main_files.extend(main_candidates)
 
         return ProjectInfo(
             project_path=project_path,
@@ -494,6 +509,56 @@ class SubmissionProcessor:
             has_makefile=has_makefile,
             has_uvprojx=has_uvprojx
         )
+
+    def _collect_user_sources_via_keil(
+        self,
+        project_path: Path,
+        main_patterns: List[str],
+        source_files: List[Path],
+        header_files: List[Path],
+        main_files: List[Path],
+    ) -> bool:
+        """用 KeilProjectParser 门控 Keil 工程的源码收集。
+
+        只收用户源文件（vendor 目录/CubeMX 系统文件剔除，含出树路径防
+        护）；main 文件按名字从用户源里挑。返回 False 表示应回退 legacy
+        盲扫（无 uvprojx 可解析 / 解析异常 / 无用户文件）。
+        """
+        try:
+            from parsers import KeilProjectParser
+        except ImportError:
+            return False
+
+        user_paths = []
+        for uvprojx in project_path.rglob("*.uvprojx"):
+            try:
+                user_paths.extend(
+                    f.path for f in KeilProjectParser().user_sources(uvprojx))
+            except Exception:
+                return False   # 任一 uvprojx 解析失败 → 整体回退盲扫
+
+        if not user_paths:
+            return False
+        # uvprojx 可能引用磁盘上不存在的文件（残留条目）——只保留真实
+        # 存在的，避免幻影路径流入后续读取；全部缺失则回退盲扫。
+        user_paths = [p for p in user_paths if p.is_file()]
+        if not user_paths:
+            return False
+
+        seen = set()
+        for path in user_paths:
+            key = str(path).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            ext = path.suffix.lower()
+            if ext in self.SOURCE_EXTENSIONS:
+                source_files.append(path)
+                if path.name in main_patterns:
+                    main_files.append(path)
+            elif ext in self.HEADER_EXTENSIONS:
+                header_files.append(path)
+        return True
 
     def get_student_summary(self, submissions: List[ProcessedSubmission]) -> Dict:
         """
