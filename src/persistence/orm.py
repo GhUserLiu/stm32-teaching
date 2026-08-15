@@ -41,12 +41,13 @@ class Teacher(Base):
 
 
 class Course(Base):
-    """课程（如：单片机原理及应用）."""
+    """课程（如：单片机原理及应用）；同一课程跨学期开课 → (code, semester) 唯一."""
 
     __tablename__ = "course"
+    __table_args__ = (UniqueConstraint("code", "semester"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    code: Mapped[str] = mapped_column(unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(nullable=False)
     name: Mapped[Optional[str]]
     semester: Mapped[str] = mapped_column(nullable=False)  # e.g. 2026-春季
 

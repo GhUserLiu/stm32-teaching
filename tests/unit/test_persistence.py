@@ -189,3 +189,12 @@ def test_init_db_idempotent(engine):
     init_db(engine)          # second call must not raise
     with get_session(engine) as s:
         assert s.query(Course).count() == 0
+
+
+def test_file_sqlite_engine_creates_parent_dir(tmp_path):
+    """sqlite 拒开无父目录的库文件——get_engine 负责建目录（真实 dry-run
+    踩到的 OperationalError 回归）。"""
+    db_file = tmp_path / "deep" / "nested" / "x.sqlite"
+    eng = get_engine("sqlite:///" + str(db_file))
+    init_db(eng)             # connects -> must not raise
+    assert db_file.is_file()

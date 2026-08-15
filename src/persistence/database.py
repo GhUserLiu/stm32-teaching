@@ -31,9 +31,17 @@ DEFAULT_URL = "sqlite:///" + str(DEFAULT_DATABASE_PATH)
 
 
 def get_engine(url: Optional[str] = None, *, echo: bool = False) -> Engine:
-    """Create an engine; SQLite connections get FK enforcement on."""
+    """Create an engine; SQLite connections get FK enforcement on.
+
+    File-backed SQLite URLs get their parent directory created -- sqlite
+    refuses to open a database file whose directory does not exist (the
+    default ``database/`` dir is not in the repo by design).
+    """
     engine = create_engine(url or DEFAULT_URL, echo=echo, future=True)
     if engine.url.get_backend_name() == "sqlite":
+        if engine.url.database:   # in-memory ('' / None) has no directory
+            Path(engine.url.database).parent.mkdir(parents=True,
+                                                   exist_ok=True)
 
         @event.listens_for(engine, "connect")
         def _enable_sqlite_fk(dbapi_connection, _record):  # pragma: no cover
