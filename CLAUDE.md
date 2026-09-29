@@ -305,6 +305,17 @@ pip install sentence-transformers Pillow
 
 ---
 
+## Repository context via redcon（2026-09-29 接入）
+
+> **本机（办公室机）回退：本机 VSCode 扩展的 redcon MCP 通道 tools/call 挂死**（initialize/tools-list 正常但调用 60s 超时，2026-09-29 定论）——本机勿调 `mcp__redcon__*` 工具，一律用 CLI，且必须 `PYTHONUTF8=1` 前缀（否则 GBK 解码崩溃）。CLI 可用子命令 plan/pack/repo-map（**无 search 子命令**，正则检索退回 Grep）。`.mcp.json` 随仓库走，供家用机（或本机通道修复后）MCP 使用。
+
+- 用法（仓库根）：`PYTHONUTF8=1 redcon plan "任务描述" --repo .`（pack / repo-map "任务" 同理；PATH 里的 redcon 为 base env，与 `.mcp.json` 钉的 `teaching_workbench` env 同为 1.18.0）
+- 索引已剪枝（`redcon.toml [scan]`；redcon 不读 .gitignore，须显式排除）：`data/teaching/**`（**学生 PII，坚决不入索引**——2026-08 曾有 151 个含学号姓名文件入库教训）、`cubemx` 厂商树（不可用 Drivers，会撞 src/common/drivers 自有驱动）、`__pycache__`/`.pytest_cache`/`outputs`/`database`/`Downloads`/`课程档案`；PDF/xlsx/xls/zip/log 二进制不入索引
+- 教学平台代码优先查 `src/tools` 与 `src/core`；`.redcon/` 为本地索引目录（已 gitignore）
+- 新增大目录/敏感目录须同步补 `redcon.toml`：目录用 `ignore_dirs`（按名剪枝、唯一省扫描的开关，且会整体替换默认剪枝集——保留 `.git`/`.redcon` 条目），文件模式用 `ignore_globs`
+
+---
+
 ## 版本历史
 
 - **v3.0.0** (2026-08-15): 架构重构——统一配置层（schemas）、服务层（core/services）、

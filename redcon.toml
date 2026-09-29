@@ -1,0 +1,51 @@
+# Redcon configuration - 2026-09-29 手写（未用 redcon init：init 会顺手注册 Cursor/Windsurf/CI，新项目须清理）
+# See: https://github.com/natiixnt/redcon/blob/main/docs/configuration.md
+# Detected dominant language: python
+
+[budget]
+max_tokens = 30000
+
+[scan]
+# 对齐本仓 .gitignore 意图：学生 PII（data/teaching——2026-08 曾 151 个含学号姓名文件入库教训）
+# + CubeMX 厂商树 + 缓存/运行产物。redcon 不读 .gitignore，必须在此显式排除。
+# ignore_dirs 按目录名在遍历时剪枝（唯一省扫描时间的开关），且会整体替换默认剪枝集（.git/.redcon 已显式列入）；
+# 以下目录名均已逐一核实真实存在。注意不可用 Drivers——Windows 下撞名 src/common/drivers 自有外设驱动。
+ignore_dirs = [
+  "__pycache__",    # 36 处字节码缓存，遍布 src/tools 与 tests
+  ".pytest_cache",  # pytest 工作缓存
+  "cubemx",         # 仅 07-car-gear/cubemx 与 Test6/cubemx 两处命中，49MB 厂商生成树主体（git 跟踪文件的大头也在其中）
+  "outputs",        # 运行时输出目录（.gitignore 同名整体不入库）
+  "database",       # SQLite 持久化目录（运行时生成，现空）
+  "Downloads",      # data/teaching/2026-春季/Downloads 学生下载缓存
+  "课程档案",        # data/teaching/2026-春季/课程档案 成绩单 PDF（学生 PII）
+  ".git",
+  ".redcon",
+]
+ignore_globs = [
+  "data/teaching/**", # 学生 PII：花名册 .xls + 班级目录，坚决不入索引
+  ".redcon/**",       # redcon 自身索引/运行历史
+  "build/**",         # PyInstaller/固件构建产物
+  "dist/**",
+  "*.pdf",            # 顶层开发板规格书/硬件手册（约 16MB）等二进制
+  "*.xlsx",
+  "*.xls",
+  "*.zip",
+  "*.log",
+]
+# 代码型仓库，不做 md/txt 白名单（include_globs 是文档归档型仓库的用法）
+
+[score]
+enable_import_graph_signals = true
+history_selected_file_boost = 1.25
+
+[compression]
+full_file_threshold_tokens = 600
+symbol_extraction_enabled = true
+
+[cache]
+backend = "local_file"
+summary_cache_enabled = true
+run_history_enabled = true
+
+[telemetry]
+enabled = false

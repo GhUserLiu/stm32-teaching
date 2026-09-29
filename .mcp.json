@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "redcon": {
+      "command": "C:/Users/liuzh/miniconda3/envs/teaching_workbench/Scripts/redcon.exe",
+      "args": [
+        "mcp",
+        "serve"
+      ],
+      "env": {
+        "PYTHONUTF8": "1"
+      },
+      "timeout": 60000
+    }
+  }
+}
