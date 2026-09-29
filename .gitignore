@@ -171,3 +171,14 @@ scripts/_*.py
 
 # 本地环境变量（机器相关路径/密钥，不入库；模板见 .env.example）
 .env
+
+# ========================================
+# redcon（本地索引与 CLI 产物——plan 会落 redcon-plan-*.{json,md}，均不入库）
+# ========================================
+.redcon/
+redcon-plan-*
+run.json
+
+# 顶层杂散 zip：ProjectF407-main.zip 系独立 GitHub 仓库（GhUserLiu/ProjectF407）
+# 的快照（clone 指引见 docs/guides/GETTING_STARTED.md），不入库
+/ProjectF407-main.zip
