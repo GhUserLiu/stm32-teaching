@@ -11,8 +11,8 @@ render_md_pdf.py — 稳健的 Markdown → PDF 渲染器（reportlab + 中文�
   - 页眉（文档标题）/ 页脚（页码）
 
 用法：
-  python render_md_pdf.py input.md output.pdf [文档副标题]
-  python render_md_pdf.py --all "目录"        # 渲染目录下全部 .md
+  conda run -n stm32_teaching python render_md_pdf.py input.md output.pdf [文档副标题]
+  conda run -n stm32_teaching python render_md_pdf.py --all "目录"        # 渲染目录下全部 .md
 """
 from __future__ import annotations
 

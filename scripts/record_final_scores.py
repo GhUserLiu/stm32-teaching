@@ -11,8 +11,8 @@
   若跳过第 1 步直接运行，撞号相关学生（安晓童/申凯丽/陈乐莹等）的分数会是旧的/缺失。
 
 用法：
-  python scripts/record_final_scores.py
-  python scripts/record_final_scores.py --semester 2026-春季 --experiment final-project \\
+  conda run -n stm32_teaching python scripts/record_final_scores.py
+  conda run -n stm32_teaching python scripts/record_final_scores.py --semester 2026-春季 --experiment final-project \\
       --score-col 课堂期末成绩 --out-suffix _含期末成绩
 
 说明：

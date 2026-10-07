@@ -13,8 +13,8 @@ first-party .py file with pathlib + ast, and prints:
   6. layering signals (gui / service / model / parser directory tokens)
 
 Usage:
-    python src/tools/scripts/scan_project.py
-    python src/tools/scripts/scan_project.py --root <path> --json report.json
+    conda run -n stm32_teaching python src/tools/scripts/scan_project.py
+    conda run -n stm32_teaching python src/tools/scripts/scan_project.py --root <path> --json report.json
 """
 
 from __future__ import annotations

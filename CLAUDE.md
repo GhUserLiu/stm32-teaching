@@ -195,7 +195,7 @@ results = detector.detect(submissions)
 
 ```bash
 # Windows：双击 启动教学管理系统.bat（自动设 PYTHONPATH=src 并 cd 到仓库根）
-python src/tools/teaching_management_gui/main.py
+conda run -n stm32_teaching python src/tools/teaching_management_gui/main.py
 ```
 
 #### 统一配置层与服务层（2026-08 重构新增）
@@ -216,8 +216,8 @@ python src/tools/teaching_management_gui/main.py
   收集已接入门控（`submission_processor._collect_user_sources_via_keil`，
   解析失败自动回退盲扫）。
 - **持久化** `src/persistence/`（SQLite 默认 `database/teaching.sqlite`）；
-  历史结果回填：`python scripts/backfill_from_results.py --dry-run` 预览，
-  去掉 `--dry-run` 落库（幂等可重跑）。
+  历史结果回填：`conda run -n stm32_teaching python scripts/backfill_from_results.py --dry-run`
+  预览，去掉 `--dry-run` 落库（幂等可重跑）。
 
 ---
 
@@ -269,6 +269,16 @@ python src/tools/teaching_management_gui/main.py
 
 ## 依赖管理
 
+### 运行环境（2026-10-07 钉扎）
+
+> 专用 conda 环境 `stm32_teaching`（Python 3.11）。本机裸 `python`/`pip` 在 PATH
+> 解析到 conda base（3.13.9）=违规，一切执行点钉
+> `conda run -n stm32_teaching python …` 形态（装包用 `python -m pip`）。
+> 2026-10-07 增量补装（已 pin 进 requirements.txt）：
+> `xlrd==2.0.2`、`xlwt==1.3.0`、`xlutils==2.0.0`（教务 .xls 花名册读写）。
+> 家用机重建：`conda create -n stm32_teaching python=3.11` 后
+> `conda run -n stm32_teaching python -m pip install -r requirements.txt`。
+
 ### STM32 工具链
 - **编译器**: `arm-none-eabi-gcc`
 - **烧录**: ST-Link 或 J-Link
@@ -276,13 +286,13 @@ python src/tools/teaching_management_gui/main.py
 ### Python 依赖
 ```bash
 # 核心依赖（必需；含统一配置层 pydantic/PyYAML 与持久化 SQLAlchemy）
-pip install python-docx openpyxl defusedxml pydantic PyYAML SQLAlchemy
+conda run -n stm32_teaching python -m pip install python-docx openpyxl defusedxml pydantic PyYAML SQLAlchemy
 
 # 推荐依赖（中文分词）
-pip install jieba
+conda run -n stm32_teaching python -m pip install jieba
 
 # 可选依赖（语义检测、图像处理）
-pip install sentence-transformers Pillow
+conda run -n stm32_teaching python -m pip install sentence-transformers Pillow
 ```
 
 ---

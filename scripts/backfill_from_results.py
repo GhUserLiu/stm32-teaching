@@ -3,10 +3,10 @@
 """CLI wrapper: 把现有 JSON 批阅/查重产物回填进数据库。
 
 用法（仓库根目录）:
-    python scripts/backfill_from_results.py                    # 默认学期/默认库
-    python scripts/backfill_from_results.py --semester 2026-春季
-    python scripts/backfill_from_results.py --db-url sqlite:///database/teaching.sqlite
-    python scripts/backfill_from_results.py --dry-run          # 只打印将要做什么
+    conda run -n stm32_teaching python scripts/backfill_from_results.py                    # 默认学期/默认库
+    conda run -n stm32_teaching python scripts/backfill_from_results.py --semester 2026-春季
+    conda run -n stm32_teaching python scripts/backfill_from_results.py --db-url sqlite:///database/teaching.sqlite
+    conda run -n stm32_teaching python scripts/backfill_from_results.py --dry-run          # 只打印将要做什么
 
 幂等：按自然键 get-or-create，重跑更新分数（最新值胜出），不产生重复行。
 """

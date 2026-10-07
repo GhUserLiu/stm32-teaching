@@ -4,13 +4,13 @@
 
 ```bash
 # 运行所有测试
-pytest tests/ -v
+conda run -n stm32_teaching python -m pytest tests/ -v
 
 # 运行单元测试
-pytest tests/unit/ -v
+conda run -n stm32_teaching python -m pytest tests/unit/ -v
 
 # 运行集成测试
-pytest tests/integration/ -v
+conda run -n stm32_teaching python -m pytest tests/integration/ -v
 ```
 
 ## 测试结构
