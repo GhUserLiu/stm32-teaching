@@ -132,6 +132,9 @@ data/teaching/*/*.html
 # 查重分组名单（内容含学号+姓名，隐私数据，不入库）
 data/teaching/**/plagiarism_groups*.txt
 
+# 保密区（教职工 PII 等敏感文件，整目录不入库）
+保密区/
+
 # Outputs（运行时输出目录整体不入库；历史教训：按扩展名枚举漏掉 .md 等格式）
 outputs/
 

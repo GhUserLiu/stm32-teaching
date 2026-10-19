@@ -1,6 +1,6 @@
 # 学生隐私数据（PII）入史清理方案
 
-> 状态：**待执行**（filter-repo 改写历史属不可逆操作，由维护者按本文步骤亲自执行）
+> 状态：**已执行**（filter-repo 历史清理已完成并 force-push；`git rev-list --objects --all` 中 `results_pre_rerun` 与 `plagiarism_groups|成绩册` 计数均为 **0**，2026-10 复核通过）
 > 创建：2026-08-15 · 依据：《项目诊断与重构方案》P0 项
 
 ## 1. 事实（已取证）
@@ -12,7 +12,7 @@
 | 残余 PII | `汽服2302B班/docs/plagiarism_groups.txt`（11 行学号+姓名，GBK）；`汽服2302B班/docs/汽服2302B班_2026春季_实验成绩册_自动评分.xlsx`（35 名学生学号/成绩/抄袭标记）——2026-08-15 内容级二次扫描发现，旧 `data/teaching/*/*.xlsx` 一级目录模式未覆盖 docs/ 子目录 |
 | 内容 | 学生反馈 md/docx、评分 JSON，**文件名与内容含真实学号 + 姓名** |
 | 根因 | 旧 `.gitignore` 只匹配 `results/` 与 `results_backup*/`，不匹配 `results_pre_rerun_*` |
-| 远端 | `origin = https://github.com/GhUserLiu/stm32-teaching.git` —— **GitHub 同样持有这些提交** |
+| 远端 | `origin = git@github.com:GhUserLiu/stm32-teaching.git`（SSH 口径） —— **GitHub 同样持有这些提交** |
 
 ## 2. 已完成的修复（2026-08-15，本次会话）
 
@@ -26,7 +26,7 @@
 ## 3. 待执行：清历史（按顺序，逐步确认）
 
 ```bash
-R="c:/Users/liuzh/Projects/Workspace/stm32-teaching"
+R="D:/4-Workspace/教学/stm32-teaching"
 
 # Step 1: commit this round (gitignore fix + untracked PII), filter-repo needs a clean repo
 git -C "$R" add .gitignore
@@ -50,7 +50,7 @@ git -C "$R" log --all --oneline -- "*results_pre_rerun*" | wc -l
 git -C "$R" rev-list --objects --all | grep -cE "plagiarism_groups|成绩册"
 
 # Step 5: filter-repo removes remotes for safety -- re-add and force-push
-git -C "$R" remote add origin https://github.com/GhUserLiu/stm32-teaching.git
+git -C "$R" remote add origin git@github.com:GhUserLiu/stm32-teaching.git
 git -C "$R" push origin --force --all
 git -C "$R" push origin --force --tags
 ```
