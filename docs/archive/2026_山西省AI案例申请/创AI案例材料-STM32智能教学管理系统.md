@@ -1,5 +1,7 @@
 # 创AI案例：基于多算法融合的STM32实验报告智能评估系统
 
+> 〔2026-10-20 死链终检总注：本文件属 docs/archive 存档区（2026 申请材料快照，只进不改），文内相对链接（L366-369 ../README.md、../tools/plagiarism/*、../docs/security/SECURITY_GUIDE.md 等 ../ 深度错，正确层级应为 ../../../README.md、../../../src/tools/plagiarism/*、../../security/SECURITY_GUIDE.md）按存档纪律不逐条改写，仅此总注备案〕
+
 ## 一、案例基本信息
 
 | 项目 | 内容 |

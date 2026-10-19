@@ -82,4 +82,4 @@ build/01-turn-signal/Debug/01-turn-signal.bin
 
 ## 常见问题
 
-详见 [故障排查日志](../docs/TROUBLESHOOTING_LOG.md)
+详见 [故障排查日志](../../docs/TROUBLESHOOTING_LOG.md)〔2026-10-20 死链修复：原 ../docs 深度错〕

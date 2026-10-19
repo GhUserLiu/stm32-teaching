@@ -370,7 +370,7 @@ void main(void)
 
 ### 4. 使用驱动库
 
-参考 [驱动库文档](../../common/drivers/README.md)：
+参考 [驱动库文档](../../../src/common/drivers/README.md)〔2026-10-20 死链修复：原 ../../common 深度错〕：
 - UART驱动
 - Timer驱动
 
@@ -395,7 +395,7 @@ if (HAL_UART_Transmit(...) != HAL_OK)
 1. 阅读 [代码风格指南](CODING_STYLE.md)
 2. 查看 [API 文档](../api/HAL_API.md)
 3. 尝试 [新建项目指南](NEW_PROJECT.md)
-4. 探索更多 [示例项目](../../projects/)
+4. 探索更多 [示例项目](../../../src/projects/)〔2026-10-20 死链修复：原 ../../projects 深度错，源码自 2026 重构起在 src/ 下〕
 
 ---
 

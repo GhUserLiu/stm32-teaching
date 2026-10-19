@@ -2,7 +2,7 @@
 
 ## 🔍 已生成测试文件
 
-**文件**: [build/Test6/Debug/Test6.hex](build/Test6/Debug/Test6.hex)
+**文件**: [build/Test6/Debug/Test6.hex](build/Test6/Debug/Test6.hex)〔2026-10-20 死链终检注：构建产物路径，Keil/EIDE build 后存在，保留原样〕
 
 **功能**: LED闪烁测试
 - LED0 (PF9) 闪烁

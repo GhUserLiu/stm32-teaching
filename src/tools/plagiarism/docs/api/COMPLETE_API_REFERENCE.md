@@ -171,9 +171,9 @@ int main(void)
 
 ## 更多资源
 
-- [HAL API 详细文档](HAL_API.md)
-- [板级支持包 API](BOARD_API.md)
-- [驱动使用指南](../../common/drivers/README.md)
+- [HAL API 详细文档](../../../../../docs/api/HAL_API.md)〔2026-10-20 死链修复：本目录无 HAL_API.md，改指仓库 docs/api/ 正本〕
+- [板级支持包 API](~~BOARD_API.md~~)〔2026-10-20 死链终检注：全仓无 BOARD_API.md，文档未建〕
+- [驱动使用指南](../../../../../src/common/drivers/README.md)〔2026-10-20 死链修复：原 ../../common 深度错〕
 
 ---
 **最后更新**: 2026-06-12

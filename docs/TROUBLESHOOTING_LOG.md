@@ -94,8 +94,8 @@ GPIOF_ODR_ADDR |= (1U << 10);               // PF10 = 1（灭）
 
 ### 相关文件
 
-- 主程序: [projects/01-turn-signal/main.c](../projects/01-turn-signal/main.c)
-- 硬件配置: [common/hal/board.h](../common/hal/board.h)
+- 主程序: [projects/01-turn-signal/main.c](../../src/projects/01-turn-signal/main.c)〔2026-10-20 死链修复：原 ../projects 深度错〕
+- 硬件配置: [common/bsp/board.h](../../src/common/bsp/board.h)〔2026-10-20 死链修复：原 ../common/hal/board.h 深度错且实际在 bsp/ 非 hal/〕
 - 编译脚本: [Makefile](../Makefile)
 
 ---

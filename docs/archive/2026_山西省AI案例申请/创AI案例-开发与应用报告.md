@@ -1,6 +1,8 @@
 # 基于多算法融合的STM32实验报告智能评估系统
 ## 开发与应用报告
 
+> 〔2026-10-20 死链终检总注：本文件属 docs/archive 存档区（2026 申请材料快照，只进不改），文内相对链接（如 L295 ../../tools/gui_app/app/ui/main_window.py——gui_app 已重构为 teaching_management_gui；L850-853 ../../README.md、../../tools/plagiarism/*、../../docs/security/* 等 ../../ 深度错，正确层级应为 ../../../src/tools/* 与 ../../security/*）按存档纪律不逐条改写，仅此总注备案〕
+
 ---
 
 ## 一、开发背景

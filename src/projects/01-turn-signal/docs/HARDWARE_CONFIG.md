@@ -267,14 +267,14 @@ GPIOF_ODR_ADDR |= (1U << 10);  // PF10 = 1
 | 2026-05-24 | 创建HAL版本，识别KEY0触发方式错误 |
 | 2026-05-24 | 合并board.h完整IO映射，删除冗余文件 |
 | 2026-05-24 | **LED点亮验证成功：使用寄存器直接操作方式** |
-| 2026-05-24 | 创建故障排查日志 [TROUBLESHOOTING_LOG.md](../../docs/TROUBLESHOOTING_LOG.md) |
+| 2026-05-24 | 创建故障排查日志 [TROUBLESHOOTING_LOG.md](../../../docs/TROUBLESHOOTING_LOG.md)〔2026-10-20 死链修复：原 ../../docs 深度错〕 |
 
 ---
 
 ## 十一、常见问题
 
 ### Q1: LED不亮怎么办？
-**A**: 参考 [TROUBLESHOOTING_LOG.md](../../docs/TROUBLESHOOTING_LOG.md) 中的错误记录#1
+**A**: 参考 [TROUBLESHOOTING_LOG.md](../../../docs/TROUBLESHOOTING_LOG.md) 中的错误记录#1〔2026-10-20 死链修复：原 ../../docs 深度错〕
 
 ### Q2: 如何验证编译是否成功？
 **A**: 使用以下命令：

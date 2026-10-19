@@ -139,7 +139,7 @@ from tools.plagiarism.grading import EnhancedGradingSystem
 ## 📚 更多文档
 
 - [评分指南](GRADING.md)
-- [配置说明](../security_config.json)
+- [配置说明](../../../../data/config/security/security_config.json)〔2026-10-20 死链修复：原 ../security_config.json 不存在，实际配置在 data/config/security/〕
 - [主项目文档](../../../README.md)
 
 ## 🔗 相关链接

@@ -292,7 +292,7 @@ HAL_Delay(500);
 
 ## UART 驱动
 
-UART 驱动提供简化的串口通信接口。详见 [`uart.h`](../../common/drivers/include/uart.h)。
+UART 驱动提供简化的串口通信接口。详见 [`uart.h`](../../../src/common/drivers/include/uart.h)〔2026-10-20 死链修复：原 ../../common 深度错〕。
 
 ### 数据结构
 
@@ -443,7 +443,7 @@ if (UART_Receive(&uart_handle, rx_buffer, sizeof(rx_buffer), 1000) == UART_STATE
 
 ## Timer 驱动
 
-Timer 驱动提供精准延时功能。详见 [`timer.h`](../../common/drivers/include/timer.h)。
+Timer 驱动提供精准延时功能。详见 [`timer.h`](../../../src/common/drivers/include/timer.h)〔2026-10-20 死链修复：原 ../../common 深度错〕。
 
 ### DWT 精准延时
 
@@ -518,7 +518,7 @@ delay_ms(500);  // 延时500毫秒
 
 ## 错误处理
 
-错误处理框架提供统一的错误管理机制。详见 [`error_handler.h`](../../common/core/error_handler.h)。
+错误处理框架提供统一的错误管理机制。详见 [`error_handler.h`](../../../src/common/core/error_handler.h)〔2026-10-20 死链修复：原 ../../common 深度错〕。
 
 ### 错误代码
 

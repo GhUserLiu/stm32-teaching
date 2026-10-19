@@ -145,5 +145,5 @@ main.c
 ## 📚 相关文档
 
 - [任务书](Test6/任务书：智能灯光控制系统（中断优先级 + 状态机）.docx)
-- [中断实现指南](projects/Test6/docs/INTERRUPT_GUIDE.md)
-- [问题分析](projects/Test6/docs/README.md)
+- [中断实现指南](INTERRUPT_GUIDE.md)〔2026-10-20 死链修复：原 projects/Test6/docs/INTERRUPT_GUIDE.md 前缀错，目标与本文同目录〕
+- [问题分析](README.md)〔2026-10-20 死链修复：原 projects/Test6/docs/README.md 前缀错，目标与本文同目录〕

@@ -210,7 +210,7 @@ if (HAL_UART_Transmit(...) != HAL_OK)
 
 ## 下一步
 
-- 阅读 [代码风格指南](../../docs/guides/CODING_STYLE.md)
+- 阅读 [代码风格指南](../../../docs/guides/CODING_STYLE.md)〔2026-10-20 死链修复：原 ../../docs 深度错〕
 - 查看 [01-turn-signal](../../projects/01-turn-signal/) 项目示例
 - 参考 [07-car-gear](../../projects/07-car-gear/) 项目了解更多功能
 
