@@ -318,6 +318,10 @@ class MainWindow(QMainWindow):
         # 帮助菜单
         help_menu = menubar.addMenu("帮助(&H)")
 
+        intro_action = QAction("功能介绍(&I)", self)
+        intro_action.triggered.connect(self.show_intro)
+        help_menu.addAction(intro_action)
+
         about_action = QAction("关于(&A)", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
@@ -336,6 +340,20 @@ class MainWindow(QMainWindow):
 
         if hasattr(current_panel, 'export_report'):
             current_panel.export_report()
+
+    def show_intro(self):
+        """简短功能介绍（弹窗，不占页面）"""
+        QMessageBox.information(
+            self, "功能介绍",
+            "<b>两步完成批阅：</b><br>"
+            "① <b>数据源</b>：选学期/课程类型 → 添加班级压缩包（可多选）<br>"
+            "② <b>批阅与查重</b>：点「🚀 一键：批阅→查重」，自动出分数与相似对<br><br>"
+            "<b>常用操作：</b><br>"
+            "· 结果表<b>双击学生行</b> → 现场调整教师实测项（出勤/答辩等，改完自动重算总分）<br>"
+            "· 「查看班级报告」→ 分数分布与排名；「导出个人报告」→ 批量导出<br>"
+            "· 调整查重阈值/方法后，可用「↺ 仅重跑查重」单独复跑<br><br>"
+            "<b>说明：</b>详细改进反馈由学生在学生端自检获得，本系统专注评分与查重。"
+        )
 
     def show_about(self):
         """显示关于对话框"""
