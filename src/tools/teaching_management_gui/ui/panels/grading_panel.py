@@ -607,13 +607,23 @@ class GradingPanel(QWidget):
         r.grade = ("A" if r.total_score >= 90 else "B" if r.total_score >= 80
                    else "C" if r.total_score >= 70 else "D" if r.total_score >= 60 else "F")
         self._fill_results_table()
+        # 同步顶部统计（平均分等）
+        ok = len(self.all_results)
+        if ok:
+            avg = sum(x.total_score for x in self.all_results) / ok
+            self.avg_label.setText(f"平均分: {avg:.1f}")
         self.log(f"教师调分：{r.class_name} {r.name} → 总分 {r.total_score:.1f}（{r.grade}）")
 
         # 持久化（results/grading/manual_overrides.json）
+        # GradingResult 不携带 experiment_id，从数据源按班级回查（一班一实验的常规场景）
         try:
             import json
-            gdir = self.config.get_output_dir(
-                r.class_name, getattr(r, "experiment_id", ""), shared().semester())
+            exp_id = ""
+            for e in shared().entries():
+                if e.class_name == r.class_name:
+                    exp_id = e.experiment_id
+                    break
+            gdir = self.config.get_output_dir(r.class_name, exp_id, shared().semester())
             gdir.mkdir(parents=True, exist_ok=True)
             fpath = gdir / "manual_overrides.json"
             data = {}

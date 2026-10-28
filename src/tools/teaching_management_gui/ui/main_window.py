@@ -295,7 +295,7 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        # 视图菜单
+        # 视图菜单（与两页导航一致）
         view_menu = menubar.addMenu("视图(&V)")
 
         data_source_action = QAction("数据源(&D)", self)
@@ -303,20 +303,10 @@ class MainWindow(QMainWindow):
         data_source_action.triggered.connect(lambda: self.nav_list.setCurrentRow(0))
         view_menu.addAction(data_source_action)
 
-        grading_action = QAction("自动评分(&G)", self)
-        grading_action.setShortcut("Ctrl+G")
-        grading_action.triggered.connect(lambda: self.nav_list.setCurrentRow(1))
-        view_menu.addAction(grading_action)
-
-        plagiarism_action = QAction("查重检测(&P)", self)
-        plagiarism_action.setShortcut("Ctrl+P")
-        plagiarism_action.triggered.connect(lambda: self.nav_list.setCurrentRow(2))
-        view_menu.addAction(plagiarism_action)
-
-        feedback_action = QAction("反馈生成(&F)", self)
-        feedback_action.setShortcut("Ctrl+F")
-        feedback_action.triggered.connect(lambda: self.nav_list.setCurrentRow(3))
-        view_menu.addAction(feedback_action)
+        grade_plag_action = QAction("批阅与查重(&G)", self)
+        grade_plag_action.setShortcut("Ctrl+G")
+        grade_plag_action.triggered.connect(lambda: self.nav_list.setCurrentRow(1))
+        view_menu.addAction(grade_plag_action)
 
         # 工具菜单
         tools_menu = menubar.addMenu("工具(&T)")
