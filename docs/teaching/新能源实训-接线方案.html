@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能座舱温控系统 · 接线方案（野火小智 STM32F103C8T6 初款核心板）</title>
+<style>
+  :root { --ink:#1a2b4a; --accent:#0f6db3; --warn:#c0392b; --ok:#1e7d43; --bg:#f6f8fb; }
+  * { box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei","PingFang SC",sans-serif; color:var(--ink);
+         max-width:960px; margin:0 auto; padding:24px 20px 48px; background:var(--bg); line-height:1.65; }
+  h1 { font-size:1.45em; border-bottom:3px solid var(--accent); padding-bottom:8px; }
+  h2 { font-size:1.15em; color:var(--accent); margin-top:1.6em; border-left:4px solid var(--accent); padding-left:8px; }
+  .meta { background:#eef4fa; border-radius:8px; padding:10px 14px; font-size:.92em; margin:12px 0; }
+  .meta b { color:var(--accent); }
+  table { border-collapse:collapse; width:100%; margin:10px 0; background:#fff; font-size:.94em; }
+  th,td { border:1px solid #c9d6e4; padding:6px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--accent); color:#fff; font-weight:600; white-space:nowrap; }
+  tr:nth-child(even) td { background:#f2f7fc; }
+  .pin { font-family:Consolas,monospace; background:#fff3d6; border-radius:3px; padding:0 5px; font-weight:700; white-space:nowrap; }
+  .warn { color:var(--warn); font-weight:700; }
+  .ok { color:var(--ok); font-weight:700; }
+  .note { background:#fff8e6; border-left:4px solid #e6a700; padding:8px 12px; border-radius:0 6px 6px 0; font-size:.93em; margin:10px 0; }
+  .diagram { background:#0e1726; color:#cfe3ff; font-family:Consolas,"Courier New",monospace;
+             border-radius:8px; padding:16px; overflow-x:auto; white-space:pre; font-size:.85em; line-height:1.5; }
+  ol li, ul li { margin:4px 0; }
+  footer { margin-top:32px; font-size:.85em; color:#6b7d94; border-top:1px solid #c9d6e4; padding-top:8px; }
+  @media print { body{background:#fff;max-width:none} .diagram{background:#f2f2f2;color:#222} }
+</style>
+</head>
+<body>
+
+<h1>智能座舱温控系统 · 接线方案</h1>
+<div class="meta">
+  <b>目标板</b>：野火小智 STM32F103C8T6 核心板（初款，正方形，<span class="warn">无板载 USB</span>）　
+  <b>依据</b>：官方引脚分配表 + 官方例程　
+  <b>代码引脚真源</b>：<span class="pin">src/common-f1/inc/board_f1.h</span><br>
+  <b>原则</b>：最大化利用板载资源，<span class="warn">面包板完全不用</span>；一次接完 → 烧 <span class="pin">f1-selftest</span> → 逐项读结果
+</div>
+
+<h2>1. 板载资源（无需接线，代码已配好）</h2>
+<table>
+<tr><th>板载硬件</th><th>引脚</th><th>说明</th></tr>
+<tr><td>RGB LED</td><td><span class="pin">R=PA1 G=PA2 B=PA3</span></td><td>低电平点亮（官方例程证实）；默认用红 PA1</td></tr>
+<tr><td>按键 KEY1</td><td><span class="pin">PA0</span></td><td>按下=低电平，内部上拉</td></tr>
+<tr><td>按键 KEY2</td><td><span class="pin">PC13</span></td><td>备用</td></tr>
+<tr><td>SWD 调试口</td><td><span class="pin">PA13/PA14</span></td><td>DAP 四线烧录</td></tr>
+<tr><td>晶振</td><td>PD0/PD1、PC14/PC15</td><td>8MHz / 32.768K，已占用不可用</td></tr>
+</table>
+<div class="note">初款核心板<b>没有板载 USB 转串口</b>——串口通信与 ISP 下载均用套件自带的 <b>野火 USB 转 TTL 线（CH340）</b>，见 §2 第 7 组。</div>
+
+<h2>2. 外接模块（杜邦线直插，共 7 组）</h2>
+<table>
+<tr><th>#</th><th>模块</th><th>接法</th><th>线数</th></tr>
+<tr><td>1</td><td>OLED 0.96" I2C</td><td>VCC→3.3V，GND→GND，SCL→<span class="pin">PB6</span>，SDA→<span class="pin">PB7</span></td><td>4</td></tr>
+<tr><td>2</td><td>DHT11</td><td>VCC→3.3V，GND→GND，DATA→<span class="pin">PB12</span></td><td>3</td></tr>
+<tr><td>3</td><td>有源蜂鸣器</td><td>VCC→3.3V，GND→GND，I/O→<span class="pin">PC2</span></td><td>3</td></tr>
+<tr><td>4</td><td>光敏模块</td><td>VCC→3.3V，GND→GND，<b>AO</b>→<span class="pin">PA4</span>（不是 DO！）</td><td>3</td></tr>
+<tr><td>5</td><td>热敏模块</td><td>VCC→3.3V，GND→GND，<b>AO</b>→<span class="pin">PA6</span>（不是 DO！）</td><td>3</td></tr>
+<tr><td>6</td><td>TB6612FNG + 电机风扇</td><td>VCC→3.3V，<b>STBY→3.3V</b>，GND→GND，AIN1→<span class="pin">PB0</span>，AIN2→<span class="pin">PB1</span>，PWMA→<span class="pin">PA8</span>；VM→<b>扩展板电源 5V</b>（GND 共地）；<b>有刷小马达两极→AO1/AO2</b>（<b>风扇叶提前装到马达轴上</b>，无正负之分）</td><td>8+2</td></tr>
+<tr><td>7</td><td><b>USB 转 TTL（CH340）</b></td><td><b>线的 RXD→PA9、TXD→PA10、GND→GND</b>（线的 VCC 不接或接 5V 供电脚）；USB 端连电脑</td><td>3</td></tr>
+</table>
+<div class="note">LED 用板载 RGB、按键用板载 KEY1 —— <span class="ok">五色灯珠、按键、面包板本次全部不用。</span><br>
+串口交叉记法：<span class="warn">线的 TX 接板的 RX，线的 RX 接板的 TX（TX↔RX 交叉）</span>。</div>
+
+<h2>3. 烧录与供电</h2>
+<ul>
+<li><b>DAP 调试器</b>（4 根）：3.3V→3.3V，GND→GND，SWDIO→SWDIO，SWCLK→SWCLK；USB 连电脑——<b>烧录首选</b></li>
+<li>备选（无 DAP 时）：CH340 线串口 ISP——BOOT0 跳 3.3V → 复位 → FlyMcu 下载（<b>不勾</b> RTS/DTR）→ 完成后 BOOT0 跳回 GND</li>
+<li>供电：扩展板电源（或 DAP/TTL 线的电源脚）给核心板 5V/3.3V</li>
+<li>上电顺序：核对检查单 → 核心板 → 扩展板电源（电机）最后开</li>
+</ul>
+
+<h2>4. 一次性接线 + 验收流程（推荐）</h2>
+<ol>
+<li>按 §2 接完 7 组线 + DAP 四线，核对 §5 检查单</li>
+<li>烧 <span class="pin">f1-selftest</span>，开串口助手 115200（选 CH340 对应 COM 口）</li>
+<li>等 10s，看 OLED/串口：
+  <ul>
+  <li>LED 行 OK = 板载红灯 1Hz 闪</li>
+  <li>KEY 行 = <b>按一下板载 KEY1</b> 变 OK（蜂鸣器静音）</li>
+  <li>BUZZ 行 = 松开按键后 0.5s 间歇鸣叫</li>
+  <li>DHT11 行 = 等 2s 报温湿度</li>
+  <li>ADC 行 = 遮光/照光看 LIGHT 变化、捏热敏看 NTC_T 上升</li>
+  <li>FAN 行 = 风扇 5s 一档循环调速</li>
+  </ul></li>
+<li>六项全 OK → OLED 右上角 <span class="ok">PASS</span>，串口 <span class="ok">ALL PASS</span></li>
+<li>某项 ERR → 对照 §6 只查该模块的 3~4 根线</li>
+</ol>
+
+<h2>5. 上电前检查单（逐项打勾）</h2>
+<ul>
+<li>☐ CH340 线 TX/RX <b>交叉</b>接到 PA10/PA9（最常见错误：没交叉）</li>
+<li>☐ TB6612：STBY=3.3V、VCC=3.3V、VM=扩展板电源 5V</li>
+<li>☐ 扩展板电源 GND 与核心板 GND 已共地</li>
+<li>☐ 光敏/热敏接 <b>AO</b> 模拟输出脚（DO 是数字阈值输出，接了恒 0/4095）</li>
+<li>☐ DHT11 用 3.3V</li>
+<li>☐ 马达不接核心板任何电源引脚</li>
+<li>☐ 杜邦线逐根轻拉确认无松动</li>
+</ul>
+
+<h2>6. 故障速查</h2>
+<table>
+<tr><th>现象</th><th>先查</th></tr>
+<tr><td>串口无输出/乱码</td><td>TX/RX 是否交叉；波特率 115200；CH340 驱动（设备管理器看 COM 号）</td></tr>
+<tr><td>板载灯不闪</td><td>LED_ACTIVE_LOW 极性宏（board_f1.h，共阳/共阴对调）</td></tr>
+<tr><td>KEY 无反应</td><td>按的是板载 KEY1（PA0），不是 KEY2</td></tr>
+<tr><td>OLED 全黑</td><td>SCL/SDA 接反；地址 0x3C；换模块</td></tr>
+<tr><td>DHT11 ERR</td><td>PB12、3.3V；两次读取间隔 ≥1s</td></tr>
+<tr><td>ADC 恒 0/4095</td><td>接了 DO；PA4/PA6 松动</td></tr>
+<tr><td>风扇不转</td><td>STBY 没拉高；VM 没电；AIN/PWM 三根线</td></tr>
+<tr><td>风扇转但失控</td><td>独立电源未共地</td></tr>
+<tr><td>DAP 连不上</td><td>SWD 四线；核心板已上电；换 USB 口/线</td></tr>
+</table>
+
+<h2>7. 接线对照图（文字版）</h2>
+<div class="diagram"> 3.3V ──┬── OLED VCC ── DHT11 VCC ── 蜂鸣器 VCC ── 光敏 VCC ── 热敏 VCC
+        └── TB6612 VCC、STBY
+ 核心板 PA0 ←── 板载 KEY1        PA1 ── 板载 LED_R（例程默认灯）
+        PC2 ──→ 蜂鸣器 I/O       PA2/PA3 ── 板载 LED_G/LED_B（进阶）
+        PB12 ←─ DHT11 DATA       PB6 ── OLED SCL   PB7 ── OLED SDA
+        PA4 ←── 光敏 AO          PA6 ←── 热敏 AO
+        PB0 ── TB6612 AIN1       PB1 ── TB6612 AIN2
+        PA8 ──→ TB6612 PWMA      PA9(TX) ←── CH340线RXD
+                                 PA10(RX) ←─ CH340线TXD   （TX/RX 交叉）
+ GND ───┴── 所有模块 GND ── TB6612 GND ── 扩展板电源 GND ── CH340线GND ── DAP GND
+ 扩展板 5V(+) ── TB6612 VM ── AO1/AO2 ── 小马达（轴上装风扇叶，转向反了交换两线）</div>
+
+<footer>
+教学分台 · 单片机/新能源汽车工程实训（电子控制方向） · 引脚依据：官方引脚分配表 + 官方例程（配套程序 20260112） · 源文档：docs/teaching/新能源实训-接线方案.md
+</footer>
+</body>
+</html>

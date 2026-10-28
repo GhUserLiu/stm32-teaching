@@ -42,7 +42,7 @@ class DataSourcePanel(QWidget):
         super().__init__(parent)
         self.setup_ui()
         # 初始同步一次（带上默认学期）
-        shared().set_semester(self.semester_edit.text().strip())
+        shared().set_semester(self.semester_edit.currentText().strip())
         self._refresh_status()
 
     # ---------------- UI ----------------
@@ -58,13 +58,39 @@ class DataSourcePanel(QWidget):
         group = QGroupBox("输入选择")
         v = QVBoxLayout()
 
-        # 学期
+        # 学期（下拉，取自学期模板 data/semesters/；记忆上次选择）
         sem_layout = QHBoxLayout()
         sem_layout.addWidget(QLabel("学期:"))
-        self.semester_edit = QLineEdit(shared().semester())
-        self.semester_edit.setPlaceholderText("例如：2026-春季")
-        self.semester_edit.editingFinished.connect(self._on_semester_changed)
-        sem_layout.addWidget(self.semester_edit)
+        from tools.teaching_management_gui.path_helper import list_semesters
+        self.semester_edit = QComboBox()
+        self.semester_edit.setEditable(True)          # 允许手输新学期名（自动建模板的场景）
+        _sems = list_semesters()
+        cur_sem = self._load_teacher_ui_state().get("semester", "") or shared().semester()
+        for s in _sems:
+            self.semester_edit.addItem(s)
+        if cur_sem:
+            if cur_sem in _sems:
+                self.semester_edit.setCurrentText(cur_sem)
+            else:
+                self.semester_edit.insertItem(0, cur_sem)
+                self.semester_edit.setCurrentText(cur_sem)
+        elif _sems:
+            self.semester_edit.setCurrentText(_sems[0])
+        self.semester_edit.currentIndexChanged.connect(self._on_semester_changed)
+        # 可编辑模式：内部行编辑敲定也同步
+        self.semester_edit.lineEdit().editingFinished.connect(self._on_semester_changed)
+        sem_layout.addWidget(self.semester_edit, 1)
+
+        # 课程类型（理实一体课 / 整周实训；记忆上次选择）
+        sem_layout.addWidget(QLabel("课程类型:"))
+        self.ctype_combo = QComboBox()
+        self.ctype_combo.setEditable(True)
+        for t in ("理实一体课", "整周实训"):
+            self.ctype_combo.addItem(t)
+        self._restore_teacher_ui_state()
+        self.ctype_combo.currentIndexChanged.connect(self._save_teacher_ui_state)
+        self.ctype_combo.lineEdit().editingFinished.connect(self._save_teacher_ui_state)
+        sem_layout.addWidget(self.ctype_combo, 1)
         sem_layout.addStretch()
         v.addLayout(sem_layout)
 
@@ -153,8 +179,52 @@ class DataSourcePanel(QWidget):
         self._refresh_status()
 
     def _on_semester_changed(self):
-        shared().set_semester(self.semester_edit.text().strip())
+        shared().set_semester(self.semester_edit.currentText().strip())
+        self._save_teacher_ui_state()
         self._refresh_status()
+
+    # ---- 教师端界面记忆（学期/课程类型，一次选择下次直进） ----
+    _TEACHER_STATE = None  # 延迟求路径
+
+    def _teacher_state_path(self):
+        if self._TEACHER_STATE is None:
+            from tools.common.path_config import PROJECT_ROOT
+            self.__class__._TEACHER_STATE = (
+                PROJECT_ROOT / "data" / "config" / "teaching" / ".teacher_ui_state.json")
+        return self._TEACHER_STATE
+
+    def _load_teacher_ui_state(self) -> dict:
+        try:
+            import json
+            p = self._teacher_state_path()
+            if p.exists():
+                return json.loads(p.read_text(encoding="utf-8")) or {}
+        except Exception:
+            pass
+        return {}
+
+    def _restore_teacher_ui_state(self):
+        st = self._load_teacher_ui_state()
+        ct = st.get("course_type", "")
+        if ct:
+            i = self.ctype_combo.findText(ct)
+            if i >= 0:
+                self.ctype_combo.setCurrentIndex(i)
+            else:
+                self.ctype_combo.insertItem(0, ct)
+                self.ctype_combo.setCurrentText(ct)
+
+    def _save_teacher_ui_state(self):
+        try:
+            import json
+            p = self._teacher_state_path()
+            p.parent.mkdir(parents=True, exist_ok=True)
+            st = self._load_teacher_ui_state()
+            st["semester"] = self.semester_edit.currentText().strip()
+            st["course_type"] = self.ctype_combo.currentText().strip()
+            p.write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
+        except Exception:
+            pass
 
     # ---- 表格行操作 ----
     def _append_row(self, class_name, exp_id, zip_path):
@@ -164,7 +234,9 @@ class DataSourcePanel(QWidget):
         self.table.setItem(row, _COL_CLASS, QTableWidgetItem(class_name))
 
         combo = QComboBox()
-        for eid, ename in experiment_choices():
+        # 实验下拉按当前学期取（学期模板 → 全局回退）
+        from tools.teaching_management_gui.path_helper import experiment_choices as _ec
+        for eid, ename in _ec(shared().semester() or None):
             combo.addItem(f"{eid} — {ename}", eid)
         # 选中当前实验
         for i in range(combo.count()):

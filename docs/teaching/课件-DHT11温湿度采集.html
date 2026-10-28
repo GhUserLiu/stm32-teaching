@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>感知层 · DHT11温湿度采集（HAL库驱动）</title>
+<style>
+  :root{--ink:#1a2b4a;--accent:#0f6db3;--warn:#c0392b;--ok:#1e7d43;--bg:#f6f8fb}
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft YaHei",sans-serif;color:var(--ink);max-width:900px;margin:0 auto;padding:24px 20px 48px;background:var(--bg);line-height:1.6}
+  h1{font-size:1.35em;border-bottom:3px solid var(--accent);padding-bottom:6px}
+  h2{font-size:1.1em;color:var(--accent);margin-top:1.4em;border-left:4px solid var(--accent);padding-left:8px}
+  .meta{background:#eef4fa;border-radius:8px;padding:8px 14px;font-size:.9em;margin:10px 0}
+  table{border-collapse:collapse;width:100%;margin:8px 0;background:#fff;font-size:.93em}
+  th,td{border:1px solid #c9d6e4;padding:5px 10px;text-align:left}
+  th{background:var(--accent);color:#fff}
+  .pin{font-family:Consolas,monospace;background:#fff3d6;padding:0 4px;font-weight:700}
+  .warn{color:var(--warn);font-weight:700}.ok{color:var(--ok);font-weight:700}
+  pre{background:#0e1726;color:#cfe3ff;border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:.85em;line-height:1.5}
+  code{font-family:Consolas,monospace}
+  .box{background:#fff8e6;border-left:4px solid #e6a700;padding:6px 12px;border-radius:0 6px 6px 0;font-size:.92em;margin:8px 0}
+  .task{background:#e9f7ee;border-left:4px solid var(--ok);padding:6px 12px;border-radius:0 6px 6px 0;font-size:.93em;margin:8px 0}
+  .diagram{background:#0e1726;color:#cfe3ff;border-radius:8px;padding:12px 16px;overflow-x:auto;white-space:pre;font-size:.85em}
+  footer{margin-top:28px;font-size:.82em;color:#6b7d94;border-top:1px solid #c9d6e4;padding-top:6px}
+</style>
+</head>
+<body>
+
+<h1>② 感知层 · DHT11 温湿度采集（HAL 库驱动）</h1>
+<div class="meta">
+<b>次序</b>：周1（三）1~2　|　<b>产出</b>：数据记录表　|
+<b>板卡</b>：野火小智 STM32F103C8T6（初款）　|　<b>参考例程</b>：官方 [29]
+</div>
+
+<h2>一句话讲清</h2>
+<p>DHT11 是<b>单总线数字传感器</b>：一根 DATA 线上按"谁拉低、拉多久"传数据，40bit = 湿度16 + 温度16 + 校验8。驱动的本质就是<b>掐着微秒级时序读电平</b>。</p>
+
+<h2>接线（3 根）</h2>
+<table>
+<tr><th>DHT11</th><th>核心板</th></tr>
+<tr><td>VCC</td><td>3.3V</td></tr>
+<tr><td>DATA</td><td><span class="pin">PB12</span>（与官方例程 [29] 一致）</td></tr>
+<tr><td>GND</td><td>GND</td></tr>
+</table>
+<div class="box">裸件（无模块板）需 DATA 上拉 4.7K~10K 到 3.3V；模块自带，不用加。</div>
+
+<h2>时序（考试和排障都考这个）</h2>
+<div class="diagram">主机起始:  ──拉低≥18ms──┬─拉高20~40us─┬──────────────
+                          ↓ 释放总线
+DHT应答:   ┌─低 80us─┐┌─高 80us─┐
+数据40bit: 每 bit = 低50us 起始 + 高电平判 0/1
+           高 26~28us = "0"    高 ~70us = "1"
+字节:      湿度整数.湿度小数 | 温度整数.温度小数 | 校验和
+校验:      前4字节相加的低8位 == 第5字节，否则本次作废</div>
+
+<h2>驱动骨架（GPIO 输出↔输入切换 + us 延时）</h2>
+<pre>/* 1. CubeMX: PB12 配 GPIO_Output（名字 DHT11_DATA），另启用一个 TIM 做 us 级延时
+   2. 读一帧的核心流程 */
+DHT11_MODE_OUTPUT();
+HAL_GPIO_WritePin(DHT11_PORT, DHT11_PIN, 0);   /* 起始：拉低 ≥18ms */
+HAL_Delay(20);
+HAL_GPIO_WritePin(DHT11_PORT, DHT11_PIN, 1);
+delay_us(30);
+DHT11_MODE_INPUT();                            /* 释放，等应答 */
+
+wait(低, 100us); wait(高, 100us); wait(低, 100us);   /* 应答 80-80-80 */
+for (i = 0; i &lt; 40; i++) {
+    wait(高, 100us);            /* 度过 50us 低电平 */
+    计时高电平时长 t;
+    bit = (t &gt; 40us) ? 1 : 0;   /* 26~28us=0，70us=1 */
+}
+/* 3. 校验和通过才采用本帧 */</pre>
+<div class="box">官方例程 [29] 用 DWT 计数器做 us 延时——直接借用它的 <code>bsp_dwt.c</code>，比自写定时器延时更省事。</div>
+
+<h2>当堂任务（约 80 min）</h2>
+<div class="task">
+<ol>
+<li>每 2s 读一次并 printf：<code>T:25C H:41%</code>（用上次课的串口）</li>
+<li>手心捂住传感器 30s，<b>数据记录表</b>记 10 组（时间/温度/湿度），画出温度上升曲线</li>
+<li>故意 500ms 连读两次 → 观察读失败，解释原因（器件 1Hz 上限）</li>
+</ol>
+</div>
+
+<h2>三个坑</h2>
+<table>
+<tr><th>现象</th><th>原因</th></tr>
+<tr><td>一直无应答</td><td>DATA 线/供电；没做上拉；引脚方向没正确切换</td></tr>
+<tr><td>偶发校验错</td><td>读取间隔 &lt;1s；us 延时不准（用 HAL_Delay 做不了 us 级！）</td></tr>
+<tr><td>数据恒定不变</td><td>DHT11 精度 1℃，变化慢属正常；确认不是打印旧变量</td></tr>
+</table>
+
+<h2>官方例程对照（照着做就对了）</h2>
+<p>配套资料里的工程：<b>《[29] DWT应用与DHT11温湿度传感器》</b>。官方驱动结构（与本课件骨架一致）：</p>
+<pre>/* 官方 User/dht11/bsp_dht11.c —— 数据脚 PB12（与接线一致） */
+#define DHT11_DATA_Pin      GPIO_PIN_12
+#define DHT11_DATA_GPIO_Port GPIOB
+
+/* 官方用 DWT（内核周期计数器）做微秒延时 —— 直接借用 */
+void DWT_Delay_us(uint32_t us);      /* bsp_dwt.c 提供，精度远高于自写循环 */
+
+/* 官方读取流程：起始信号 → 切输入 → 应答 → 40bit 计时判 0/1 → 校验和 */</pre>
+<table>
+<tr><th>文件</th><th>看什么</th></tr>
+<tr><td><code>User/dht11/bsp_dht11.c</code></td><td>完整时序实现：读它、跑通它、再试着自己重写</td></tr>
+<tr><td><code>User/dwt/bsp_dwt.c</code></td><td>us 级延时（DWT 计数器），拷进自己工程即用</td></tr>
+<tr><td><code>User/main.c</code></td><td>每秒读一次 + 串口打印的完整用法</td></tr>
+</table>
+
+<footer>新能源汽车工程实训（电子控制方向） · 感知层 ② DHT11 · 下节课热敏 ADC 可与 DHT11 温度互相对照定标</footer>
+</body>
+</html>

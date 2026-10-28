@@ -153,18 +153,42 @@ class AutoGradingConfig:
         self.teaching_dir = self.data_dir / "teaching"
         self.outputs_dir = self.project_root / "outputs"
 
-    def get_rubric_path(self, experiment_code: str) -> Path:
-        """获取评分标准路径。
+    def get_rubric_path(self, experiment_code: str, semester: str = None) -> Path:
+        """获取评分标准路径（学期模板优先，2026-10 学期模板机制）。
 
-        优先按实验代码定位（如 07_car_gear_experiment.json）；
-        若不存在则回退到通用 rubric.json（当前主链路使用的规范文件）。
+        查找顺序：
+        1. data/semesters/<学期>/rubrics/<实验id>.json   ← 每学期一套标准（推荐）
+        2. data/semesters/<学期>/experiments.yaml 中该实验 rubric 字段指定的文件
+        3. data/rubrics/<实验id>.json                    ← 全局（兼容旧布局）
+        4. data/rubrics/rubric.json                      ← 通用回退（带告警）
         """
+        sem = semester or self.semester
+        # 1) 学期模板：同名 rubric
+        if sem:
+            sem_specific = (self.data_dir / "semesters" / sem / "rubrics"
+                            / f"{experiment_code}.json")
+            if sem_specific.exists():
+                return sem_specific
+            # 2) 学期模板：experiments.yaml 里 rubric 字段指定的路径
+            try:
+                import yaml
+                sem_yaml = self.data_dir / "semesters" / sem / "experiments.yaml"
+                if sem_yaml.exists():
+                    with open(sem_yaml, encoding="utf-8") as f:
+                        data = yaml.safe_load(f) or {}
+                    info = (data.get("experiments") or {}).get(experiment_code) or {}
+                    ref = info.get("rubric") if isinstance(info, dict) else None
+                    if ref:
+                        p = (self.data_dir / "semesters" / sem / ref).resolve()
+                        if p.exists():
+                            return p
+            except Exception:
+                pass
+        # 3) 全局同名 rubric
         specific = self.rubrics_dir / f"{experiment_code}.json"
         if specific.exists():
             return specific
-        # 未找到该实验专属 rubric：回退通用 rubric.json。
-        # 07-car-gear 等本就以 rubric.json 为标准，属预期；其它 experiment 多半是
-        # 拼写错误或漏建 rubric——回退会被当成汽车档位标准误评，故显式告警提示核对。
+        # 4) 回退通用 rubric.json
         fallback = self.rubrics_dir / "rubric.json"
         print(f"[评分标准] 未找到 {specific.name}，回退到 {fallback.name}"
               f"（请确认 experiment '{experiment_code}' 是否应使用此标准）")

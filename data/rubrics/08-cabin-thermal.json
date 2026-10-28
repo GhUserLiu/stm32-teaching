@@ -1,0 +1,148 @@
+{
+  "experiment_name": "智能座舱温控系统设计（新能源汽车工程实训·电子控制方向）",
+  "experiment_code": "08_cabin_thermal",
+  "course_name": "新能源汽车工程实训（电子控制方向）",
+  "version": "1.0.0",
+  "_scheme_note": "对齐《新能源汽车工程实训（电子控制方向）实施方案》考核方案（合计100分）：出勤与纪律10 + 子系统训练20 + 系统联调30 + 报告撰写20 + 答辩与规范10 + 进阶功能10。机器可评部分：报告20（关键词）+ 系统联调30的代码证据（编译10/非阻塞5/代码质量15）；其余为教师实测项（manual，默认分按方案折中给定，教师可在成绩册中调整）。",
+  "thinking_check": false,
+
+  "hardware_platform": {
+    "mcu": "STM32F103C8T6（野火小智核心板）",
+    "modules": ["DHT11", "光敏 ADC", "热敏 ADC", "OLED SSD1306(I2C)", "有源蜂鸣器", "TB6612FNG+风扇", "LED", "按键"],
+    "toolchain": "arm-none-eabi-gcc + make（本仓 src/common-f1 框架；机房 Keil/CubeMX 亦可）"
+  },
+
+  "expected_sections": [
+    ["1", ["实训日志", "过程记录", "现象记录"], "journal", 5],
+    ["2", ["系统设计", "系统框图", "引脚表", "任务分工"], "system_design", 5],
+    ["3", ["实现", "核心代码", "驱动", "感知", "决策", "执行"], "implementation", 5],
+    ["4", ["测试", "调试", "数据记录", "问题与解决"], "test_analysis", 3],
+    ["5", ["总结", "参考文献"], "summary", 2]
+  ],
+
+  "grading_scale": {
+    "A": {"min": 90, "max": 100, "label": "优"},
+    "B": {"min": 80, "max": 89.9, "label": "良"},
+    "C": {"min": 70, "max": 79.9, "label": "中"},
+    "D": {"min": 60, "max": 69.9, "label": "及格"},
+    "F": {"min": 0, "max": 59.9, "label": "不及格"}
+  },
+
+  "categories": [
+    {
+      "id": "journal", "name": "实训日志与过程资料", "points": 5, "grading_method": "keyword",
+      "source_section": "1、实训日志与过程资料",
+      "criteria": [
+        {"description": "日志完整（4次以上，含现象记录/问题记录）", "points": 3,
+         "keywords": ["日志", "现象", "记录", "问题"]},
+        {"description": "过程资料（接线图/数据表）", "points": 2,
+         "keywords": ["接线", "引脚", "数据", "表"]}
+      ]
+    },
+    {
+      "id": "system_design", "name": "系统设计", "points": 5, "grading_method": "keyword",
+      "source_section": "2、系统设计",
+      "criteria": [
+        {"description": "系统框图与感知→决策→执行分层", "points": 3,
+         "keywords": ["系统框图", "感知", "决策", "执行", "分层"]},
+        {"description": "引脚分配表与任务分工", "points": 2,
+         "keywords": ["引脚表", "PA", "PB", "PC", "分工"]}
+      ]
+    },
+    {
+      "id": "implementation", "name": "实现说明", "points": 5, "grading_method": "keyword",
+      "source_section": "3、实现说明",
+      "criteria": [
+        {"description": "传感器驱动说明（DHT11/ADC）", "points": 2,
+         "keywords": ["DHT11", "ADC", "单总线", "采样"]},
+        {"description": "执行器与显示说明（PWM/OLED/蜂鸣器）", "points": 2,
+         "keywords": ["PWM", "占空比", "OLED", "I2C", "蜂鸣器"]},
+        {"description": "控制策略说明（滞回/阈值/分档）", "points": 1,
+         "keywords": ["阈值", "滞回", "温度", "自动"]}
+      ]
+    },
+    {
+      "id": "test_analysis", "name": "测试与分析", "points": 3, "grading_method": "keyword",
+      "source_section": "4、测试与分析",
+      "criteria": [
+        {"description": "测试数据记录与分析", "points": 2,
+         "keywords": ["测试", "数据", "分析", "对比"]},
+        {"description": "问题与解决过程", "points": 1,
+         "keywords": ["问题", "解决", "排查"]}
+      ]
+    },
+    {
+      "id": "summary", "name": "总结与参考文献", "points": 2, "grading_method": "keyword",
+      "source_section": "5、总结与参考文献",
+      "criteria": [
+        {"description": "总结与收获", "points": 1, "keywords": ["总结", "收获", "体会"]},
+        {"description": "参考文献规范", "points": 1, "keywords": ["参考文献", "[1]"]}
+      ]
+    },
+
+    {
+      "id": "build", "name": "编译检查（系统联调-代码证据）", "points": 10, "grading_method": "build",
+      "source_section": "源代码工程",
+      "description": "对真实源码工程执行编译，编译通过得满分；失败不得分",
+      "note": "由 BuildChecker 实际编译评定；工具链缺失时记 SKIPPED 并排除出总分"
+    },
+    {
+      "id": "non_blocking", "name": "非阻塞设计（HAL_Delay 禁用）", "points": 5, "grading_method": "source_check",
+      "source_section": "源代码工程",
+      "forbid_patterns": ["HAL_Delay\\s*\\("],
+      "penalty_per_hit": 3,
+      "note": "主循环应基于 HAL_GetTick 毫秒滴搭非阻塞调度，每处 HAL_Delay 扣 3 分扣完为止；传感器驱动时序内的微秒/毫秒级延时（如 DHT11 起始信号）属正常实现，不计违规"
+    },
+    {
+      "id": "code_quality", "name": "代码质量", "points": 15, "grading_method": "code_analysis",
+      "source_section": "源代码工程",
+      "description": "对真实源码静态分析：模块划分、循环调度、命名规范、注释",
+      "criteria": [
+        {"description": "模块划分合理（驱动与应用分离）", "points": 5},
+        {"description": "主循环非阻塞周期调度正确", "points": 5},
+        {"description": "命名规范、注释清晰", "points": 5}
+      ]
+    },
+
+    {
+      "id": "attendance", "name": "出勤与纪律（教师）", "points": 10, "grading_method": "manual",
+      "default_points": 8,
+      "source_section": "教师评定",
+      "description": "每日签到（方案：10分，教师按签到记录评定）"
+    },
+    {
+      "id": "subsystem", "name": "子系统训练（教师）", "points": 20, "grading_method": "manual",
+      "default_points": 16,
+      "source_section": "教师评定",
+      "description": "基础/感知/显示/执行四层，每层5分，检查表验收（Day1~6）"
+    },
+    {
+      "id": "defense", "name": "答辩与规范（教师）", "points": 10, "grading_method": "manual",
+      "default_points": 8,
+      "source_section": "教师评定",
+      "description": "演示、接线/代码/报告规范（Day9~10 答辩）"
+    },
+    {
+      "id": "advanced", "name": "进阶功能（教师）", "points": 10, "grading_method": "manual",
+      "default_points": 0,
+      "source_section": "教师评定",
+      "description": "自选进阶（风扇调速/光照自适应氛围灯/CAN双板通信等）验证成功加分，默认 0"
+    }
+  ],
+
+  "reference_answers": {
+    "system_arch": "感知层（DHT11/光敏/热敏）→ 决策层（阈值+滞回控制）→ 执行层（风扇PWM/蜂鸣器/LED）+ 显示层（OLED/串口）",
+    "control_policy": "温度滞回：升温 ≥28℃ 开风扇、降温 <26℃ 关；≥30℃ 全速；≥32℃ 过温报警；光照低于阈值开氛围灯",
+    "hysteresis": "双阈值（28/26℃）避免临界温度附近风扇频繁启停（抖动）",
+    "pin_map": {"DHT11": "PB12", "光敏": "PA4(ADC1_IN4)", "热敏": "PA6(ADC1_IN6)", "OLED": "PB6=SCL PB7=SDA", "蜂鸣器": "PC2", "板载按键": "KEY1=PA0(KEY2=PC13备用)", "板载RGB": "R=PA1 G=PA2 B=PA3", "TB6612": "AIN1=PB0 AIN2=PB1 PWMA=PA8", "串口": "PA9/PA10 115200(外接CH340线,交叉)"}
+  },
+
+  "common_issues": [
+    "电机/风扇直接从核心板 5V 取电（应独立供电、共地）",
+    "OLED 接到 PB8/PB9 等未初始化引脚（本框架固定 PB6/PB7）",
+    "DHT11 读取间隔 <1s 或未做校验和检查",
+    "光敏/热敏模块接 3.3V/5V 与 ADC 参考电压不一致导致读数饱和",
+    "在主循环使用长阻塞延时导致按键/OLED 刷新卡顿",
+    "温控无滞回，临界温度反复启停风扇"
+  ]
+}

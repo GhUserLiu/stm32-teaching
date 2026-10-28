@@ -1,0 +1,98 @@
+# 2026-秋季学期实验清单（按专业区分；年度教学任务变化时只改本文件与同目录 rubrics/）
+# 专业（三个）：汽服、新能源、智能网联汽车
+# 课程类型（两种）：理实一体课 / 整周实训
+# majors 不写 = 全专业通用；type 不写 = 不限类型。
+#
+# 新能源实训 = 8 个分节次小任务（共用 rubrics/08-task.json 通用标准）+ 1 个总项目（专项标准）。
+# 小任务条目 = 每次课的作业：1 份实验报告(.docx) + 1 份源码 zip；教师端逐任务批阅出分。
+
+experiments:
+  # ---- 新能源实训 · 分节次小任务 ----
+  08-t01-uart-printf:
+    name: "任务1：串口printf调试输出（UART）"
+    code: "08_task_uart"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(二)1~2；产出：日志2 + 数据记录表"
+
+  08-t02-dht11:
+    name: "任务2：DHT11温湿度采集"
+    code: "08_task_dht11"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(三)1~2；产出：数据记录表"
+
+  08-t03-ntc-adc:
+    name: "任务3：热敏电阻温度采集（ADC）"
+    code: "08_task_ntc"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(三)3~4；产出：日志3（含与DHT11对照定标）"
+
+  08-t04-light:
+    name: "任务4：光敏传感器采集"
+    code: "08_task_light"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(三)5~6"
+
+  08-t05-oled:
+    name: "任务5：OLED显示驱动（I2C）"
+    code: "08_task_oled"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(四)1~2；产出：日志4"
+
+  08-t06-pwm-fan:
+    name: "任务6：TB6612风扇调速（PWM）"
+    code: "08_task_fan"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(四)3~6"
+
+  08-t07-breath:
+    name: "任务7：呼吸灯（PWM）"
+    code: "08_task_breath"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(五)1~2"
+
+  08-t08-ambient:
+    name: "任务8：进阶光照自适应氛围灯"
+    code: "08_task_ambient"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(五)3~4；产出：项目报告主体初稿"
+
+  # ---- 新能源实训 · 总项目 ----
+  08-cabin-thermal:
+    name: "智能座舱温控系统设计（总项目）"
+    code: "08_cabin_thermal"
+    rubric: "rubrics/08-cabin-thermal.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "两周联调总项目：1份项目报告 + 1份源码；出勤/子系统/答辩/进阶为教师实测项"
+
+  # ---- 理论课（汽服 / 智能网联汽车） ----
+  07-car-gear:
+    name: "汽车档位模拟器设计"
+    code: "07_car_gear_experiment"
+    rubric: "rubrics/07-car-gear.json"
+    majors: ["汽服", "智能网联汽车"]
+    type: "理实一体课"
+    description: "基于STM32F407的汽车档位模拟器设计与实现（理论课）"
+
+  final-project:
+    name: "期末综合项目（多功能嵌入式系统综合设计）"
+    code: "final_project"
+    rubric: "rubrics/final-project.json"
+    type: "理实一体课"
+    description: "三选一综合设计；功能实现由教师实测评定（全专业通用）"

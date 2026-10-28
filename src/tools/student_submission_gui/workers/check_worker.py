@@ -80,22 +80,27 @@ class CheckWorker(QThread):
             self.log_message.emit("开始作业自检与自评")
             self.log_message.emit("=" * 60)
 
+            # 报告可选（模板未发/阶段代码自检场景）：缺报告走纯代码自检
             if not s.report_path:
-                self.failed.emit("未选择实验报告文件")
-                return
-
-            # 体积护栏：避免读取超大报告造成长时间内存占用 / UI 卡顿
-            try:
-                size = Path(s.report_path).stat().st_size
-            except OSError as e:
-                self.failed.emit(f"无法读取报告文件：{e}")
-                return
-            if size > MAX_REPORT_BYTES:
-                self.failed.emit(
-                    f"报告文件过大（{size / 1024 / 1024:.0f} MB，上限 {MAX_REPORT_BYTES // 1024 // 1024} MB），"
-                    "请压缩图片或拆分后再试。"
-                )
-                return
+                if not s.source_path:
+                    self.failed.emit("请至少选择实验报告或源码包之一")
+                    return
+                self.log_message.emit(
+                    "ℹ 未选择报告：本次为【代码自检】——只评编译/代码质量/非阻塞，"
+                    "报告类不计（总分仅供参考，等模板下发后连同报告再测）")
+            else:
+                # 体积护栏：避免读取超大报告造成长时间内存占用 / UI 卡顿
+                try:
+                    size = Path(s.report_path).stat().st_size
+                except OSError as e:
+                    self.failed.emit(f"无法读取报告文件：{e}")
+                    return
+                if size > MAX_REPORT_BYTES:
+                    self.failed.emit(
+                        f"报告文件过大（{size / 1024 / 1024:.0f} MB，上限 {MAX_REPORT_BYTES // 1024 // 1024} MB），"
+                        "请压缩图片或拆分后再试。"
+                    )
+                    return
 
             # 阶段1：读取与构建
             self.stage_started.emit("build", "读取报告与源码")
@@ -113,8 +118,12 @@ class CheckWorker(QThread):
                 return
 
             try:
+                # 学期模板：自检评分标准按所选学期解析（无学期则全局回退）
+                sem = getattr(s, "semester", "") or ""
+                if sem:
+                    self._checker.config.semester = sem
                 result: SelfCheckResult = self._checker.run(
-                    Path(s.report_path),
+                    Path(s.report_path) if s.report_path else None,
                     Path(s.source_path) if s.source_path else None,
                     s.identity,
                     s.experiment_code,

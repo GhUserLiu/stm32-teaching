@@ -1,0 +1,13 @@
+# 2026-春季学期实验清单（汽服2302B班理论课）
+# 年度教学任务变化时只改本文件与同目录 rubrics/，无需改程序
+experiments:
+  07-car-gear:
+    name: "汽车档位模拟器设计"
+    code: "07_car_gear_experiment"
+    rubric: "rubrics/07-car-gear.json"
+    description: "基于STM32F407的汽车档位模拟器设计与实现"
+  final-project:
+    name: "期末综合项目（多功能嵌入式系统综合设计）"
+    code: "final_project"
+    rubric: "rubrics/final-project.json"
+    description: "三选一综合设计；功能实现由教师实测评定"

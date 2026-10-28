@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>感知层 · 热敏电阻温度采集（ADC配置）</title>
+<style>
+  :root{--ink:#1a2b4a;--accent:#0f6db3;--warn:#c0392b;--ok:#1e7d43;--bg:#f6f8fb}
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft YaHei",sans-serif;color:var(--ink);max-width:900px;margin:0 auto;padding:24px 20px 48px;background:var(--bg);line-height:1.6}
+  h1{font-size:1.35em;border-bottom:3px solid var(--accent);padding-bottom:6px}
+  h2{font-size:1.1em;color:var(--accent);margin-top:1.4em;border-left:4px solid var(--accent);padding-left:8px}
+  .meta{background:#eef4fa;border-radius:8px;padding:8px 14px;font-size:.9em;margin:10px 0}
+  table{border-collapse:collapse;width:100%;margin:8px 0;background:#fff;font-size:.93em}
+  th,td{border:1px solid #c9d6e4;padding:5px 10px;text-align:left}
+  th{background:var(--accent);color:#fff}
+  .pin{font-family:Consolas,monospace;background:#fff3d6;padding:0 4px;font-weight:700}
+  .warn{color:var(--warn);font-weight:700}.ok{color:var(--ok);font-weight:700}
+  pre{background:#0e1726;color:#cfe3ff;border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:.85em;line-height:1.5}
+  code{font-family:Consolas,monospace}
+  .box{background:#fff8e6;border-left:4px solid #e6a700;padding:6px 12px;border-radius:0 6px 6px 0;font-size:.92em;margin:8px 0}
+  .task{background:#e9f7ee;border-left:4px solid var(--ok);padding:6px 12px;border-radius:0 6px 6px 0;font-size:.93em;margin:8px 0}
+  footer{margin-top:28px;font-size:.82em;color:#6b7d94;border-top:1px solid #c9d6e4;padding-top:6px}
+</style>
+</head>
+<body>
+
+<h1>③ 感知层 · 热敏电阻温度采集（ADC 配置）</h1>
+<div class="meta">
+<b>次序</b>：周1（三）3~4　|　<b>产出</b>：实训日志3　|
+<b>板卡</b>：野火小智 STM32F103C8T6（初款）　|　<b>参考例程</b>：官方 [21-2]
+</div>
+
+<h2>一句话讲清</h2>
+<p>热敏是<b>模拟量</b>：温度→电阻→电压，ADC 把电压变成 0~4095 的数字。整条链：<b>分压测电压 → 算电阻 → B 值公式算温度</b>。DHT11 给你"标准答案"，本节自己搭"测量仪"。</p>
+
+<h2>接线（3 根）</h2>
+<table>
+<tr><th>热敏模块</th><th>核心板</th></tr>
+<tr><td>VCC</td><td>3.3V（与 ADC 参考电压一致！）</td></tr>
+<tr><td><b>AO</b></td><td><span class="pin">PA6</span>（ADC1_IN6，与官方例程 [21-2] 一致）</td></tr>
+<tr><td>GND</td><td>GND</td></tr>
+</table>
+<div class="box"><span class="warn">AO ≠ DO</span>：AO 是连续模拟电压；DO 是模块上电位器设定的开关量（接了读数恒 0 或 4095）。<b>插中间脚前看清丝印。</b></div>
+
+<h2>两步配置（CubeMX）</h2>
+<ol>
+<li>ADC1 → IN6 勾选（PA6 自动变模拟）</li>
+<li>Parameter：Independent mode / <b>连续转换关（单次轮询）</b> / 采样时间选长（239.5 周期，热敏分压源阻抗高，采样太短读数偏低）</li>
+</ol>
+
+<h2>读取与换算（HAL + 公式）</h2>
+<pre>/* 1. 读取（轮询式，最简） */
+HAL_ADC_Start(&amp;hadc1);
+HAL_ADC_PollForConversion(&amp;hadc1, 100);
+uint16_t raw = HAL_ADC_GetValue(&amp;hadc1);      /* 0~4095 */
+
+/* 2. 原始值 → 电压 → 电阻（模块内置 10K 定阻与 NTC 分压） */
+float v   = raw * 3.3f / 4096.0f;
+float r   = 10000.0f * v / (3.3f - v);          /* R_ntc，看模块分压方向 */
+
+/* 3. B 值公式（B=3950，T0=298.15K 即 25℃，R0=10K） */
+float t_k = 1.0f / ( logf(r / 10000.0f) / 3950.0f + 1.0f / 298.15f );
+float t_c = t_k - 273.15f;
+printf("NTC raw:%4d  R:%.0f  T:%.1fC\r\n", raw, r, t_c);</pre>
+<table>
+<tr><th>要点</th><th>说明</th></tr>
+<tr><td>均值滤波</td><td>连读 8 次取平均，消抖（例程 [21-2] 同做法）</td></tr>
+<tr><td>方向核对</td><td>捏热传感器：raw 应单调变化；若公式温度反向 → 模块分压方向与假设相反，R 公式分子分母对调</td></tr>
+</table>
+
+<h2>当堂任务（约 80 min）</h2>
+<div class="task">
+<ol>
+<li>printf 输出 raw / 电压 / 温度三列，500ms 一行</li>
+<li><b>对照定标</b>：与 DHT11 同测一环境，记录两种温度各 10 组（数据进日志3 的表格），计算偏差并分析原因（精度 1℃ vs 连续值、位置差异）</li>
+<li>捏热 / 松开，验证温度连续上升与回落，记录响应大约几秒</li>
+</ol>
+</div>
+
+<h2>三个坑</h2>
+<table>
+<tr><th>现象</th><th>原因</th></tr>
+<tr><td>恒 0 或恒 4095</td><td>接了 DO；AO 松动；VCC 没接</td></tr>
+<tr><td>读数偏低不稳</td><td>采样时间太短（改 239.5 周期）；没做均值</td></tr>
+<tr><td>温度方向反</td><td>分压方向假设反了，对调 R 公式分子分母</td></tr>
+</table>
+
+<h2>官方例程对照（照着做就对了）</h2>
+<p>配套资料里的工程：<b>《[21-2] ADC多通道采集热敏、光敏、反射传感器（轮询）》</b>。官方主循环（原文，注释里的通道号与本课接线一致）：</p>
+<pre>HAL_ADCEx_Calibration_Start(&hadc1);       // 上电先校准 ADC（别漏！）
+
+for (int i = 0; i &lt; 3; i++) {
+    HAL_ADC_Start(&amp;hadc1);                  // 启动一次转换
+    if (HAL_ADC_PollForConversion(&amp;hadc1, 10) == HAL_OK) {
+        adc_val[i]  = HAL_ADC_GetValue(&amp;hadc1);
+        voltage[i]  = adc_val[i] * (3.3f / 4095);   // 换算电压
+    }
+}
+printf("\r\n光敏(IN4): %.2f V, 反射(IN5): %.2f V, 热敏(IN6): %.2f V\r\n", ...);</pre>
+<table>
+<tr><th>要点</th><th>说明</th></tr>
+<tr><td>通道顺序</td><td>CubeMX 里 Rank 顺序决定读取顺序：官方 光敏IN4→反射IN5→热敏IN6；我们只接 光敏+热敏，把反射通道删掉即可</td></tr>
+<tr><td>官方没做的</td><td>电压→电阻→温度（B 值公式）官方例程停在了电压，本课任务就是补上后半段</td></tr>
+</table>
+
+<footer>新能源汽车工程实训（电子控制方向） · 感知层 ③ 热敏ADC · 下节课光敏同法（PA4，只是不换算温度）· 联调工程 f1-day2-sensors 即本层完整参考</footer>
+</body>
+</html>

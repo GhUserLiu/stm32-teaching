@@ -1,0 +1,105 @@
+{
+  "experiment_name": "实训小任务通用评分标准",
+  "experiment_code": "08_task",
+  "course_name": "新能源汽车工程实训（电子控制方向）",
+  "version": "1.0.0",
+  "_scheme_note": "小任务（分节次作业）通用标准，合计100分：实验记录35（关键词机器评）+ 源码证据40（编译15/非阻塞5/代码质量20，机器评）+ 任务检查25（教师实测，未填自动按 25×0.8=20 预置）。总项目（08-cabin-thermal）另用专项标准。多个小任务条目共用本文件。",
+  "thinking_check": false,
+
+  "expected_sections": [
+    ["1", ["任务目的", "实验目的"], "purpose", 7],
+    ["2", ["现象", "数据", "记录"], "observation", 10],
+    ["3", ["实现", "代码", "接线", "引脚"], "implementation", 11],
+    ["4", ["问题", "解决", "排查"], "troubleshoot", 7]
+  ],
+
+  "grading_scale": {
+    "A": {"min": 90, "max": 100, "label": "优"},
+    "B": {"min": 80, "max": 89.9, "label": "良"},
+    "C": {"min": 70, "max": 79.9, "label": "中"},
+    "D": {"min": 60, "max": 69.9, "label": "及格"},
+    "F": {"min": 0, "max": 59.9, "label": "不及格"}
+  },
+
+  "categories": [
+    {
+      "id": "purpose", "name": "任务目的", "points": 7, "grading_method": "keyword",
+      "source_section": "1、任务目的",
+      "criteria": [
+        {"description": "任务目标与涉及外设说明", "points": 7,
+         "keywords": ["目的", "任务", "UART", "DHT11", "ADC", "OLED", "PWM", "GPIO", "外设"]}
+      ]
+    },
+    {
+      "id": "observation", "name": "现象与数据记录", "points": 10, "grading_method": "keyword",
+      "source_section": "2、现象与数据记录",
+      "criteria": [
+        {"description": "现象记录完整", "points": 5,
+         "keywords": ["现象", "输出", "显示", "打印", "观察"]},
+        {"description": "数据记录表/多次测量", "points": 5,
+         "keywords": ["数据", "记录", "表", "组", "测量"]}
+      ]
+    },
+    {
+      "id": "implementation", "name": "实现说明", "points": 11, "grading_method": "keyword",
+      "source_section": "3、实现说明",
+      "criteria": [
+        {"description": "接线/引脚说明", "points": 4,
+         "keywords": ["接线", "引脚", "PA", "PB", "PC", "连接"]},
+        {"description": "关键代码/流程说明", "points": 7,
+         "keywords": ["代码", "配置", "流程", "函数", "初始化", "HAL"]}
+      ]
+    },
+    {
+      "id": "troubleshoot", "name": "问题与解决", "points": 7, "grading_method": "keyword",
+      "source_section": "4、问题与解决",
+      "criteria": [
+        {"description": "遇到的问题与排查过程", "points": 7,
+         "keywords": ["问题", "解决", "排查", "现象", "原因"]}
+      ]
+    },
+
+    {
+      "id": "build", "name": "编译检查", "points": 15, "grading_method": "build",
+      "source_section": "源代码工程",
+      "description": "对真实源码工程执行编译，编译通过得满分；失败不得分",
+      "note": "由 BuildChecker 实际编译评定；工具链缺失时记 SKIPPED 并排除出总分"
+    },
+    {
+      "id": "non_blocking", "name": "非阻塞设计（HAL_Delay 禁用）", "points": 5, "grading_method": "source_check",
+      "source_section": "源代码工程",
+      "forbid_patterns": ["HAL_Delay\\s*\\("],
+      "penalty_per_hit": 3,
+      "note": "主循环应非阻塞调度；传感器驱动时序内的微秒/毫秒级延时属正常实现，不计违规"
+    },
+    {
+      "id": "code_quality", "name": "代码质量", "points": 20, "grading_method": "code_analysis",
+      "source_section": "源代码工程",
+      "description": "静态分析：模块划分、命名规范、注释",
+      "criteria": [
+        {"description": "结构清晰（初始化/主循环分离）", "points": 7},
+        {"description": "命名规范", "points": 7},
+        {"description": "注释与可读性", "points": 6}
+      ]
+    },
+
+    {
+      "id": "task_check", "name": "任务检查（教师）", "points": 25, "grading_method": "manual",
+      "default_points": 20,
+      "source_section": "教师评定",
+      "description": "按当日检查表现场评定（功能演示、数据记录质量、回答提问）；未填写时自动按 25×0.8=20 分预置，教师可随时调整"
+    }
+  ],
+
+  "reference_answers": {
+    "submission": "每次小任务：1份实验报告(.docx) + 1份源码zip（Makefile+common-f1 工程形态）",
+    "pin_map_hint": "统一见接线方案：DHT11=PB12 热敏=PA6 光敏=PA4 OLED=PB6/PB7 蜂鸣器=PC2 TB6612=PB0/PB1/PA8"
+  },
+
+  "common_issues": [
+    "报告只贴图无文字说明（关键词匹配不到）",
+    "源码未带 Makefile/common-f1（编译 0 分）",
+    "数据记录只有一次测量，无对比分析",
+    "主循环 HAL_Delay 阻塞（演示时按键/OLED 卡顿）"
+  ]
+}

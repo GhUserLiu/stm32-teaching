@@ -89,7 +89,9 @@ class SelfChecker:
         """对单份提交执行「检测 + 自评」。
 
         Args:
-            report_path: 实验报告路径（.docx 佳；.doc/.pdf 会降级）
+            report_path: 实验报告路径（.docx 佳；.doc/.pdf 会降级）。
+                         可为 None——纯代码自检（模板未发/阶段自检场景），
+                         报告类按缺失计，代码侧反馈（编译/质量/非阻塞）照常。
             source_path: 源代码——目录或 .zip；可为 None
             identity: 学生身份（班级/学号/姓名）
             experiment_code: 实验 id（如 07-car-gear），用于定位 rubric
@@ -100,33 +102,41 @@ class SelfChecker:
         Raises:
             原样向上抛出；抛出前会清理本调用创建的所有 tempdir。
         """
-        report_path = Path(report_path)
         temp_dirs: List[Path] = []
         warnings: List[str] = []
         archive_suffix = ""          # 实际源码包后缀（供报告区分 7z/zip）
         extraction_error_str = ""    # 解压失败原因（供 source_state 分类为 corrupted/nested）
         source_state: Optional[SourceState] = None  # 喂给引擎走真实分支
         try:
-            # 0. 报告文件名规范提示（教师端仅整理匹配「班级-学号-姓名-实验报告」的报告，
-            #    其余会被跳过）。UI 徽标已提示，这里同步进 warnings 以便落到自检报告。
-            if not StudentIdentity.filename_is_canonical(report_path.stem):
-                tip = (
-                    f"报告文件名「{report_path.stem}」不符合提交规范。教师端仅整理匹配"
-                    "「班级-学号-姓名-实验报告」的报告，其余将被跳过。"
-                )
-                if identity.is_complete():
-                    tip += (
-                        f"建议改名为：{identity.class_name}-{identity.student_id}-"
-                        f"{identity.name}-实验报告{report_path.suffix}"
+            if report_path is None:
+                # 纯代码自检：无报告文本
+                warnings.append(
+                    "本次为代码自检（未提交报告）：报告类评分为缺失属预期，"
+                    "总分仅供参考；模板下发后请连同报告完整自检。")
+                report_text = ""
+                code_blocks = []
+            else:
+                report_path = Path(report_path)
+                # 0. 报告文件名规范提示（教师端仅整理匹配「班级-学号-姓名-实验报告」的报告，
+                #    其余会被跳过）。UI 徽标已提示，这里同步进 warnings 以便落到自检报告。
+                if not StudentIdentity.filename_is_canonical(report_path.stem):
+                    tip = (
+                        f"报告文件名「{report_path.stem}」不符合提交规范。教师端仅整理匹配"
+                        "「班级-学号-姓名-实验报告」的报告，其余将被跳过。"
                     )
-                warnings.append(tip)
+                    if identity.is_complete():
+                        tip += (
+                            f"建议改名为：{identity.class_name}-{identity.student_id}-"
+                            f"{identity.name}-实验报告{report_path.suffix}"
+                        )
+                    warnings.append(tip)
 
-            # 1. 读报告 + 抽代码块（复用教师端，无文件名依赖）
-            report_text = self._processor._read_report(report_path)
-            code_blocks = self._processor._extract_code_blocks(report_text)
-            # 1b. 团队成员表学号位数校验：学号写成 9/10 位会让同组被拆成多个单人组、
-            #     组反馈无法聚合（教师端虽已按姓名花名册补救，但学生端尽早提示更稳妥）。
-            self._check_team_member_ids(report_text, warnings)
+                # 1. 读报告 + 抽代码块（复用教师端，无文件名依赖）
+                report_text = self._processor._read_report(report_path)
+                code_blocks = self._processor._extract_code_blocks(report_text)
+                # 1b. 团队成员表学号位数校验：学号写成 9/10 位会让同组被拆成多个单人组、
+                #     组反馈无法聚合（教师端虽已按姓名花名册补救，但学生端尽早提示更稳妥）。
+                self._check_team_member_ids(report_text, warnings)
 
             # 2. 解析源码工程（zip / 7z 安全解压到 tempdir 后分析）
             resolved_source: Optional[Path] = None
@@ -164,6 +174,24 @@ class SelfChecker:
                 source_state = SourceStateClassifier.classify(resolved_source)
             else:
                 source_state = SourceStateClassifier.classify(None)
+
+            # 2b. common-f1 框架缺失预检（F103 实训工程专用）：
+            #     Makefile 引用 common-f1 但工程内/上级都找不到 → 编译必败。
+            #     提前给出针对性提示，省得学生对着 make 报错猜。
+            if resolved_source is not None and (resolved_source / "Makefile").is_file():
+                try:
+                    mk_text = (resolved_source / "Makefile").read_text(
+                        encoding="utf-8", errors="ignore")
+                    if "common-f1" in mk_text and not (
+                        (resolved_source / "common-f1").is_dir()
+                        or (resolved_source.parent / "common-f1").is_dir()
+                    ):
+                        warnings.append(
+                            "⚠ 检测到工程使用了 common-f1 框架，但压缩包里没有带上 common-f1 "
+                            "文件夹——编译必定失败。请把仓库 src/common-f1 整个文件夹拷进你的"
+                            "工程目录（与 Makefile 同级）后重新打包提交。")
+                except OSError:
+                    pass
 
             # 3. 直接构造 ProcessedSubmission（身份来自 UI，不依赖文件名）
             submission = ProcessedSubmission(

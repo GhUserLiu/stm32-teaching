@@ -88,6 +88,21 @@ class GradingPanel(QWidget):
         """)
         self.start_btn.clicked.connect(self.start_grading)
 
+        # 一键流水线：批阅 → 查重（教师端只出分数；详细反馈由学生端自检自行获得）
+        self.one_click_btn = QPushButton("🚀 一键：批阅→查重")
+        self.one_click_btn.setMinimumHeight(40)
+        self.one_click_btn.setToolTip(
+            "依次执行：批阅全部班级 → 查重，直接出分数与相似对。\n"
+            "详细改进反馈由学生端自检获得，教师端不再生成个人反馈文档。")
+        self.one_click_btn.setStyleSheet("""
+            QPushButton { background-color: #1565C0; color: white; font-size: 14px;
+                font-weight: bold; border-radius: 5px; padding: 8px 16px; }
+            QPushButton:hover { background-color: #0D47A1; }
+            QPushButton:disabled { background-color: #cccccc; }
+        """)
+        self.one_click_btn.clicked.connect(lambda: self.start_grading(one_click=True))
+        self._one_click_chain = False
+
         self.cancel_btn = QPushButton("取消")
         self.cancel_btn.setMinimumHeight(40)
         self.cancel_btn.setEnabled(False)
@@ -95,6 +110,7 @@ class GradingPanel(QWidget):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
+        btn_row.addWidget(self.one_click_btn)
         btn_row.addWidget(self.start_btn)
         btn_row.addWidget(self.cancel_btn)
         btn_row.addStretch()
@@ -210,6 +226,21 @@ class GradingPanel(QWidget):
         if hasattr(win, "nav_list"):
             win.nav_list.setCurrentRow(0)
 
+    # ---------------- 一键流水线链式触发 ----------------
+    def _chain_plagiarism(self):
+        """批阅完成后自动启动查重（教师端只出分数，不生成反馈文档）。"""
+        win = self.window()
+        pp = getattr(win, "plagiarism_panel", None)
+        if pp is None:
+            self.log("⚠ 未找到查重面板，一键链止于批阅")
+            return
+        if getattr(pp, "plagiarism_worker", None) is not None and \
+                pp.plagiarism_worker.isRunning():
+            self.log("⚠ 查重正在进行，跳过自动查重")
+            return
+        self.log("→ 自动开始查重…")
+        pp.start_detection()
+
     # ---------------- 日志 ----------------
     def log(self, message):
         if hasattr(self, "log_text"):
@@ -258,7 +289,7 @@ class GradingPanel(QWidget):
             return False
         return None  # 取消
 
-    def start_grading(self):
+    def start_grading(self, one_click: bool = False):
         # 防止在上一轮 worker 仍存活时覆盖引用（导致 QThread 被提前销毁）
         if self.grading_worker is not None and self.grading_worker.isRunning():
             QMessageBox.information(self, "请稍候", "上一次批阅仍在进行中。")
@@ -267,6 +298,9 @@ class GradingPanel(QWidget):
         if not entries:
             QMessageBox.warning(self, "警告", "请先到「数据源」页选择班级压缩包")
             return
+        self._one_click_chain = one_click
+        if one_click:
+            self.log("一键流水线启动：批阅 → 查重")
 
         # 断点续跑检测（Phase B）：选中班级里有无上次中断的 checkpoint
         resume = self._detect_resume(entries)
@@ -333,6 +367,11 @@ class GradingPanel(QWidget):
         self._update_failure_banner()
         self._fill_results_table()
         self.log(f"批阅完成！成功 {ok} / 失败 {bad} / 共 {total}，平均 {avg:.1f}")
+
+        # 一键流水线：批阅完成 → 自动链式触发查重（查重面板完成后再触发反馈）
+        if self._one_click_chain:
+            self._one_click_chain = False
+            self._chain_plagiarism()
 
     def _update_failure_banner(self):
         n = len(self.all_failures)
@@ -497,6 +536,14 @@ class GradingPanel(QWidget):
                   if f"{x.class_name}|{x.student_id}" == row_key), None)
         if r is None:
             return
+
+        # 有教师实测项（manual 类别）→ 弹调分对话框；否则弹普通详情
+        manual_cats = [cs for cs in r.category_scores
+                       if any(isinstance(d, dict) and d.get("manual") for d in (cs.details or []))]
+        if manual_cats:
+            self._open_adjust_dialog(r, manual_cats)
+            return
+
         detail = (
             f"<h3>{r.class_name} - {r.name}</h3>"
             f"<table border=1 cellpadding=4>"
@@ -509,6 +556,75 @@ class GradingPanel(QWidget):
         if r.weaknesses:
             detail += "<br><b>不足:</b><ul>" + "".join(f"<li>{s}</li>" for s in r.weaknesses) + "</ul>"
         QMessageBox.information(self, "学生详情", detail)
+
+    # ---------------- 教师调分（manual 类别） ----------------
+    def _open_adjust_dialog(self, r, manual_cats):
+        """双击学生行弹调分框：改教师实测项（出勤/子系统/答辩/进阶等 manual 类别）。
+
+        确认后：更新内存结果与表格显示，并把调整值持久化到
+        results/grading/manual_overrides.json。
+        """
+        from PyQt6.QtWidgets import QDoubleSpinBox, QFormLayout
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"教师调分 — {r.class_name} {r.name}（{r.student_id}）")
+        dlg.setMinimumWidth(360)
+        v = QVBoxLayout(dlg)
+        hint = QLabel("教师实测项（默认分为系统预置，按实际表现调整）：")
+        v.addWidget(hint)
+        form = QFormLayout()
+        spins = []
+        for cs in manual_cats:
+            sb = QDoubleSpinBox()
+            sb.setRange(0.0, float(cs.max_points))
+            sb.setDecimals(1)
+            sb.setSingleStep(0.5)
+            sb.setValue(float(cs.earned_points))
+            spins.append((cs, sb))
+            form.addRow(f"{cs.category_name}（0~{cs.max_points:g}）", sb)
+        v.addLayout(form)
+        btns = QHBoxLayout()
+        ok = QPushButton("保存")
+        ok.clicked.connect(dlg.accept)
+        cancel = QPushButton("取消")
+        cancel.clicked.connect(dlg.reject)
+        btns.addStretch()
+        btns.addWidget(ok)
+        btns.addWidget(cancel)
+        v.addLayout(btns)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        overrides = {}
+        for cs, sb in spins:
+            new_val = sb.value()
+            if abs(new_val - float(cs.earned_points)) > 1e-6:
+                cs.earned_points = new_val
+                cs.details = [{"feedback": f"教师调整 {new_val:g} 分", "manual": True}]
+            overrides[cs.category_id] = new_val
+
+        # 重算总分与等级（按通用刻度 90/80/70/60）
+        r.total_score = sum(float(cs.earned_points) for cs in r.category_scores)
+        r.grade = ("A" if r.total_score >= 90 else "B" if r.total_score >= 80
+                   else "C" if r.total_score >= 70 else "D" if r.total_score >= 60 else "F")
+        self._fill_results_table()
+        self.log(f"教师调分：{r.class_name} {r.name} → 总分 {r.total_score:.1f}（{r.grade}）")
+
+        # 持久化（results/grading/manual_overrides.json）
+        try:
+            import json
+            gdir = self.config.get_output_dir(
+                r.class_name, getattr(r, "experiment_id", ""), shared().semester())
+            gdir.mkdir(parents=True, exist_ok=True)
+            fpath = gdir / "manual_overrides.json"
+            data = {}
+            if fpath.exists():
+                data = json.loads(fpath.read_text(encoding="utf-8"))
+            data[r.student_id] = {"name": r.name, "adjust": overrides,
+                                  "total_after": round(r.total_score, 1), "grade": r.grade}
+            fpath.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+            self.log(f"调分已保存：{fpath.name}")
+        except Exception as ex:
+            self.log(f"⚠ 调分保存失败：{ex}")
 
     def view_class_report(self):
         """打开班级报告对话框。多班级时让教师选择要查看的班（此前只取 entries[0]，

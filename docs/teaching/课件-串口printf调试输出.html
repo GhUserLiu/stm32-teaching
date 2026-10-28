@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>显示层 · 串口printf调试输出（UART）</title>
+<style>
+  :root{--ink:#1a2b4a;--accent:#0f6db3;--warn:#c0392b;--ok:#1e7d43;--bg:#f6f8fb}
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft YaHei",sans-serif;color:var(--ink);max-width:900px;margin:0 auto;padding:24px 20px 48px;background:var(--bg);line-height:1.6}
+  h1{font-size:1.35em;border-bottom:3px solid var(--accent);padding-bottom:6px}
+  h2{font-size:1.1em;color:var(--accent);margin-top:1.4em;border-left:4px solid var(--accent);padding-left:8px}
+  .meta{background:#eef4fa;border-radius:8px;padding:8px 14px;font-size:.9em;margin:10px 0}
+  table{border-collapse:collapse;width:100%;margin:8px 0;background:#fff;font-size:.93em}
+  th,td{border:1px solid #c9d6e4;padding:5px 10px;text-align:left}
+  th{background:var(--accent);color:#fff}
+  .pin{font-family:Consolas,monospace;background:#fff3d6;padding:0 4px;font-weight:700}
+  .warn{color:var(--warn);font-weight:700}.ok{color:var(--ok);font-weight:700}
+  pre{background:#0e1726;color:#cfe3ff;border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:.85em;line-height:1.5}
+  code{font-family:Consolas,monospace}
+  .box{background:#fff8e6;border-left:4px solid #e6a700;padding:6px 12px;border-radius:0 6px 6px 0;font-size:.92em;margin:8px 0}
+  .task{background:#e9f7ee;border-left:4px solid var(--ok);padding:6px 12px;border-radius:0 6px 6px 0;font-size:.93em;margin:8px 0}
+  footer{margin-top:28px;font-size:.82em;color:#6b7d94;border-top:1px solid #c9d6e4;padding-top:6px}
+</style>
+</head>
+<body>
+
+<h1>① 显示层 · 串口 printf 调试输出（UART）</h1>
+<div class="meta">
+<b>次序</b>：周1（二）1~2　|　<b>产出</b>：实训日志2 + 数据记录表　|
+<b>板卡</b>：野火小智 STM32F103C8T6（初款）　|　<b>参考例程</b>：官方 [19-2]
+</div>
+
+<h2>一句话讲清</h2>
+<p><b>串口是嵌入式开发的第一调试手段</b>——程序跑在板子上，你"看不见"它，printf 就是把变量实时"说"给电脑听。</p>
+
+<h2>接线（3 根，交叉！）</h2>
+<table>
+<tr><th>CH340 USB 转 TTL 线</th><th>核心板</th></tr>
+<tr><td>RXD</td><td><span class="pin">PA9</span>（板 TX）</td></tr>
+<tr><td>TXD</td><td><span class="pin">PA10</span>（板 RX）</td></tr>
+<tr><td>GND</td><td>GND</td></tr>
+</table>
+<div class="box"><span class="warn">最常见错误：TX/RX 没交叉。</span>记法：<b>线的 TX 接板的 RX</b>。USB 端插电脑，设备管理器看到 <code>USB-SERIAL CH340 (COMx)</code> 即驱动 OK。</div>
+
+<h2>三步配置（CubeMX）</h2>
+<ol>
+<li>USART1 → Mode: <b>Asynchronous</b>（异步）</li>
+<li>参数：Baud <b>115200</b> / 8-N-1</li>
+<li>生成代码，HAL 已备好 <code>HAL_UART_Transmit()</code></li>
+</ol>
+
+<h2>printf 重定向（核心一段）</h2>
+<pre>/* 让 printf 走 USART1 —— 加到 main.c 用户区 */
+#include &lt;stdio.h&gt;
+
+int fputc(int ch, FILE *f)          /* Keil 用这个 */
+{
+    HAL_UART_Transmit(&amp;huart1, (uint8_t *)&amp;ch, 1, 0xFFFF);
+    return ch;
+}
+/* GCC 工程则改写 int _write(int fd,char*ptr,int len){...} 同理 */</pre>
+<pre>printf("T=%.1fC\r\n", temp);       /* 用法与 C 语言课完全相同 */</pre>
+<p>注意 <code>\r\n</code> 换行；工程选项里勾选 <b>MicroLIB</b>（Keil）可减小 printf 体积。</p>
+
+<h2>当堂任务（约 80 min）</h2>
+<div class="task">
+<ol>
+<li>每 1s 打印一行：<code>[组号] sys run: xx s</code>（<code>HAL_GetTick()</code> 计秒）</li>
+<li>打印一个变化的变量（如自增计数、ADC 随手读一个值）</li>
+<li>做<b>数据记录表</b>：同一条语句，改波特率 9600/115200 各截一张串口助手截图，记录现象（乱码/正常）与原因</li>
+</ol>
+</div>
+
+<h2>三个坑</h2>
+<table>
+<tr><th>现象</th><th>原因</th></tr>
+<tr><td>完全无输出</td><td>TX/RX 没交叉 / GND 没接 / COM 口选错</td></tr>
+<tr><td>乱码</td><td>波特率不匹配（双方必须同为 115200）</td></tr>
+<tr><td>输出卡顿丢字</td><td>用了阻塞发送超时太短，或在中断里 printf</td></tr>
+</table>
+
+<h2>官方例程对照（照着做就对了）</h2>
+<p>配套资料里的工程：<b>《[19-2] 串口发送之发送字符串与printf函数》</b>（开课前先读资料包《[0]例程使用前必读说明.pdf》）。官方代码与上面讲的完全一致：</p>
+<pre>/* 官方 main.c 用户区 —— printf 重定向（原文） */
+int fputc(int ch, FILE *f)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
+
+/* 官方主循环（原文，演示用 HAL_Delay；最终项目里要改成 HAL_GetTick 非阻塞） */
+while (1) {
+    printf("你好，欢迎使用野火小智！\r\n");
+    HAL_Delay(1000);
+}</pre>
+<table>
+<tr><th>文件</th><th>看什么</th></tr>
+<tr><td><code>Core/Src/usart.c</code></td><td>MSP 里官方自动配好 <b>PA9=TX / PA10=RX</b>（与接线一致，不用改）</td></tr>
+<tr><td><code>Core/Src/main.c</code></td><td>fputc 写在 <b>USER CODE BEGIN 4</b> 区——CubeMX 重新生成代码不会被覆盖</td></tr>
+</table>
+
+<h2>printf 深入：何时用、何时别用（课程组重点要求）</h2>
+<table>
+<tr><th>场景</th><th>该用吗</th><th>怎么做</th></tr>
+<tr><td>看传感器读数是否正常</td><td class="ok">✅ 最该用</td><td>定时打印 raw/换算值，对照预期</td></tr>
+<tr><td>程序卡死，不知道跑到哪</td><td class="ok">✅ 打点定位</td><td>在怀疑位置插 <code>printf("here A\r\n")</code>，卡在哪一桩就清楚了</td></tr>
+<tr><td>状态机切换跟踪</td><td class="ok">✅ 进阶必用</td><td><code>printf("mode:%d->%d\r\n", old, new)</code>，切换异常一目了然</td></tr>
+<tr><td>启动自检/错误上报</td><td class="ok">✅ 工程惯例</td><td>上电打印版本号；初始化失败打印原因</td></tr>
+<tr><td>中断服务函数里</td><td class="warn">❌ 别用</td><td>printf 是阻塞发送，会拖死中断；改置标志，主循环再打印</td></tr>
+<tr><td>微秒级时序段（DHT11 读数中）</td><td class="warn">❌ 别用</td><td>一打印时序就乱，读数必失败；先存数组，读完再打印</td></tr>
+<tr><td>主循环每圈都打</td><td class="warn">⚠ 慎用</td><td>主循环 &lt;1ms 时 printf 拖慢节奏；用计数器降到 10 次/秒</td></tr>
+</table>
+
+<h3>printf 格式速查（够用版）</h3>
+<pre>printf("%d\r\n",  temp);      // 整数
+printf("%u\r\n",  tick);      // 无符号（HAL_GetTick 返回值用 %lu 更稳）
+printf("%.1f\r\n", voltage);  // 小数保留 1 位（浮点打印需勾 MicroLIB/完整库）
+printf("%s count=%d\r\n", "DHT11", n);   // 混合
+printf("0x%02X\r\n", reg);    // 十六进制看寄存器（调试 I2C/OLED 神器）</pre>
+<div class="box">工程习惯：定义宏开关 <code>#define DBG 1</code>，发布版改 0 一键静音——
+<code>#if DBG&nbsp;&nbsp;printf(...)&nbsp;&nbsp;#endif</code></div>
+
+<h2>串口工具使用步骤（人手一份）</h2>
+<ol>
+<li><b>找 COM 号</b>：CH340 线插电脑 → 右键开始菜单 → 设备管理器 → 「端口(COM 和 LPT)」→
+    记下 <code>USB-SERIAL CH340 (COM3)</code> 的 COM 号（拔插一次看谁消失，最不会认错）</li>
+<li><b>打开串口工具</b>——<b>野火串口调试助手</b>（配套资料《4-软件工具》内，绿色免安装；
+    SSCOM/XCOM 等其他工具操作完全相同），按 <b>四要素</b>设置：
+    波特率 <b>115200</b>、数据位 <b>8</b>、停止位 <b>1</b>、校验 <b>无</b>，流控<b>不勾</b></li>
+<li>选对 <b>COMx</b> → 点「<b>打开串口</b>」→ 按板子复位键，应立刻收到一串输出</li>
+<li>常用三键：「<b>清空</b>」（重新观察）、「<b>暂停</b>」（读屏）、「<b>保存/记录</b>」——
+    <b>做数据记录表就靠保存</b>：先存成 .txt/.csv，再整理进实验报告</li>
+<li>收不到？按顺序查：COM 号选错 → TX/RX 没交叉 → 波特率不一致 → 驱动没装好</li>
+</ol>
+
+<footer>新能源汽车工程实训（电子控制方向） · 显示层 ① 串口printf · 与联调工程 f1-day4-oled 的 UART 部分衔接</footer>
+</body>
+</html>

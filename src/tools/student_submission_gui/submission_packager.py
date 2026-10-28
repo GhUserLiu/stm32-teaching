@@ -118,8 +118,8 @@ def assess_gate(
     v = getattr(result, "validation", None)
     if v is not None and getattr(v, "warning_count", 0) > 0:
         warnings.append(
-            f"提交检测另有 {v.warning_count} 项警告（章节完整性/思考题等，不影响打包，"
-            f"建议按「提交检测」面板提示改进）。"
+            f"检测过程另有 {v.warning_count} 项警告（章节完整性/思考题等，不影响打包，"
+            f"建议按「检测过程」面板提示改进）。"
         )
 
     return (len(blockers) == 0, blockers, warnings)

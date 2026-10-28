@@ -126,7 +126,26 @@ class SourceStateClassifier:
         if nested:
             return cls._nested_project(nested)
 
-        # 7) 有文件但无任何工程结构 → 视为空/异常
+        # 7) 根目录有源文件但无任何工程结构 → 散文件打包（常见：只压了 .c/.h）
+        loose = [p.name for p in entries
+                 if p.is_file() and p.suffix.lower() in (".c", ".h", ".s")]
+        if loose:
+            return SourceState(
+                state=STATE_EMPTY,
+                is_machine_buildable=False,
+                feedback_reason=(
+                    f"源码包里只有散的源文件（{', '.join(loose[:5])}…），"
+                    "没有 Makefile 工程结构，机器无法编译。"
+                ),
+                feedback_fix=(
+                    "改进方法：请以课程提供的 f1-* 例程工程为底座打包——把 common-f1 整个文件夹"
+                    "拷进工程目录，与 Makefile、main.c 一起压缩；压缩包解压后第一层应能直接看到 "
+                    "Makefile、main.c 和 common-f1 文件夹。"
+                ),
+                detail=f"根目录散文件: {', '.join(loose[:5])}",
+            )
+
+        # 8) 有文件但无任何工程结构 → 视为空/异常
         return cls._empty(detail=f"目录有 {len(entries)} 个条目但无工程结构")
 
     # ------------------------------------------------------------------

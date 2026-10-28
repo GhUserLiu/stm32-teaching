@@ -55,18 +55,12 @@ class PlagiarismPanel(QWidget):
         main_layout.addWidget(self._create_log_panel())
 
     def _create_config_panel(self):
-        group = QGroupBox("数据源与查重参数")
+        group = QGroupBox("查重参数")
         layout = QVBoxLayout()
 
-        # 数据源状态
-        ds_row = QHBoxLayout()
+        # 数据源状态（与批阅同页后不再重复展示；保留空标签防属性缺失）
         self.ds_status = QLabel()
-        self.ds_status.setWordWrap(True)
-        ds_row.addWidget(self.ds_status, 1)
-        go_btn = QPushButton("前往数据源页")
-        go_btn.clicked.connect(lambda: self.window().nav_list.setCurrentRow(0))
-        ds_row.addWidget(go_btn)
-        layout.addLayout(ds_row)
+        self.ds_status.hide()
 
         # 查重方法 + 阈值
         params = QHBoxLayout()
@@ -98,20 +92,15 @@ class PlagiarismPanel(QWidget):
         opts.addStretch()
         layout.addLayout(opts)
 
-        # 按钮
+        # 按钮（查重由「一键：批阅→查重」自动串行触发；单独重跑入口保留为小按钮）
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        self.start_btn = QPushButton("开始查重（全部班级）")
-        self.start_btn.setMinimumHeight(40)
-        self.start_btn.setStyleSheet(
-            "QPushButton{background-color:#2196F3;color:white;font-weight:bold;"
-            "border-radius:5px;padding:8px 16px;}"
-            "QPushButton:hover{background-color:#1976D2;}"
-            "QPushButton:disabled{background-color:#cccccc;}"
-        )
+        self.start_btn = QPushButton("↺ 仅重跑查重")
+        self.start_btn.setToolTip(
+            "查重已并入上方「🚀 一键：批阅→查重」。\n"
+            "本按钮仅在调整阈值/方法后需要单独重跑查重时使用。")
         self.start_btn.clicked.connect(self.start_detection)
         self.cancel_btn = QPushButton("取消")
-        self.cancel_btn.setMinimumHeight(40)
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_detection)
         btn_row.addWidget(self.start_btn)

@@ -26,18 +26,96 @@ from tools.teaching_management_gui.ui.panels.feedback_panel import FeedbackPanel
 from tools.teaching_management_gui import __version__
 
 
+# 全局视觉主题（与学生端同款：现代蓝 60-30-10 / 浅灰白底 / 白卡片）
+APP_QSS = """
+QWidget { background-color: #f4f6f9; color: #1f2937; font-size: 13px; font-family: "Microsoft YaHei","PingFang SC",sans-serif; }
+QLabel { background: transparent; }
+
+QGroupBox {
+    background-color: #ffffff;
+    border: 1px solid #dde5f0;
+    border-radius: 8px;
+    margin-top: 20px;
+    padding: 16px 12px 12px 12px;
+    font-weight: bold;
+    color: #2563eb;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px; top: 2px; padding: 0 4px;
+    color: #2563eb;
+}
+
+QPushButton {
+    background-color: #eef3fb; color: #1f2937;
+    border: 1px solid #c9d6ea; border-radius: 6px;
+    padding: 6px 16px;
+}
+QPushButton:hover { background-color: #dfe9f9; border-color: #a9bede; }
+QPushButton:pressed { background-color: #cfe0f7; }
+QPushButton:disabled { color: #93a3b8; background-color: #f2f5fa; }
+
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background-color: #ffffff;
+    border: 1px solid #c9d6ea; border-radius: 5px;
+    padding: 4px 8px;
+    selection-background-color: #dbeafe;
+}
+QLineEdit:focus, QComboBox:focus { border: 1px solid #2563eb; }
+QComboBox::drop-down { border: none; width: 22px; }
+QComboBox QAbstractItemView {
+    background: #ffffff; border: 1px solid #c9d6ea;
+    selection-background-color: #dbeafe; selection-color: #1f2937;
+}
+
+QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #dde5f0; border-radius: 6px;
+    gridline-color: #e6ecf5;
+    alternate-background-color: #f6f9fd;
+}
+QHeaderView::section {
+    background-color: #2563eb; color: #ffffff;
+    border: none; padding: 6px 8px;
+    font-weight: bold;
+}
+QTableWidget::item { padding: 4px 6px; }
+QTableWidget::item:selected { background-color: #dbeafe; color: #1f2937; }
+
+QProgressBar {
+    background-color: #ffffff; border: 1px solid #dde5f0;
+    border-radius: 5px; text-align: center; height: 16px;
+}
+QProgressBar::chunk { background-color: #2563eb; border-radius: 4px; }
+
+QPlainTextEdit, QTextEdit {
+    background-color: #ffffff;
+    border: 1px solid #dde5f0; border-radius: 6px;
+}
+
+QScrollArea { border: none; background: transparent; }
+QStatusBar { background-color: #ffffff; border-top: 1px solid #dde5f0; }
+QMenuBar { background-color: #ffffff; }
+QMenuBar::item:selected { background-color: #dbeafe; }
+QMenu { background-color: #ffffff; border: 1px solid #dde5f0; }
+QMenu::item:selected { background-color: #dbeafe; }
+"""
+
+
 class MainWindow(QMainWindow):
     """教学管理系统主窗口"""
 
     def __init__(self):
         super().__init__()
+        self.setStyleSheet(APP_QSS)
 
         self.setup_ui()
         self.setup_menu_bar()
 
     def setup_ui(self):
         """设置界面"""
-        self.setWindowTitle(f"教学管理系统 v{__version__}")
+        self.setWindowTitle(f"单片机课程教学管理系统 v{__version__}")
         self.setMinimumSize(1200, 800)
 
         # 创建中央窗口
@@ -78,7 +156,7 @@ class MainWindow(QMainWindow):
         sidebar.setFixedWidth(200)
         sidebar.setStyleSheet("""
             QWidget {
-                background-color: #2c3e50;
+                background-color: #1e40af;
                 color: white;
             }
             QListWidget {
@@ -93,10 +171,10 @@ class MainWindow(QMainWindow):
                 color: white;
             }
             QListWidget::item:hover {
-                background-color: #34495e;
+                background-color: #2f6fed;
             }
             QListWidget::item:selected {
-                background-color: #3498db;
+                background-color: #2563eb;
                 font-weight: bold;
             }
             QLabel {
@@ -119,13 +197,14 @@ class MainWindow(QMainWindow):
         from PyQt6.QtCore import QSize
         self.nav_list.setIconSize(QSize(24, 24))
 
-        # 添加导航项
+        # 添加导航项（两页结构：数据源 / 批阅与查重同页；反馈页默认隐藏）
+        import os
         nav_items = [
-            ("data_source", "📁 数据源", "选择班级压缩包（可多选）"),
-            ("grading", "📊 自动评分", "自动批阅学生作业"),
-            ("plagiarism", "🔍 查重检测", "检测作业相似度"),
-            ("feedback", "💬 反馈生成", "生成学生反馈报告"),
+            ("data_source", "① 数据源", "选择班级压缩包（可多选），选学期与课程类型"),
+            ("grade_plag", "② 批阅与查重", "一键批阅+查重，出分数与相似对"),
         ]
+        if os.environ.get("SHOW_FEEDBACK_PANEL", "") == "1":
+            nav_items.append(("feedback", "💬 反馈生成", "生成学生反馈报告"))
 
         for item_id, item_name, item_tooltip in nav_items:
             list_item = QListWidgetItem(item_name)
@@ -141,7 +220,7 @@ class MainWindow(QMainWindow):
         # 底部信息
         layout.addStretch()
 
-        version_label = QLabel(f"v{__version__}")
+        version_label = QLabel(f"v{__version__}<br>汽车工程学院单片机课程组")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         version_label.setStyleSheet("color: #95a5a6; font-size: 12px;")
         layout.addWidget(version_label)
@@ -149,23 +228,29 @@ class MainWindow(QMainWindow):
         return sidebar
 
     def create_panels(self):
-        """创建并添加各个功能面板"""
+        """创建并添加各个功能面板（两页：数据源 / 批阅与查重同页纵排）"""
 
         # 0. 数据源面板（集中选择输入）
         self.data_source_panel = DataSourcePanel(self)
         self.content_stack.addWidget(self.data_source_panel)
 
-        # 1. 自动评分面板
+        # 1+2. 批阅与查重同页（纵排滚动，消除两页重复的进度/状态区）
         self.grading_panel = GradingPanel(self)
-        self.content_stack.addWidget(self.grading_panel)
-
-        # 2. 查重检测面板
         self.plagiarism_panel = PlagiarismPanel(self)
-        self.content_stack.addWidget(self.plagiarism_panel)
+        from PyQt6.QtWidgets import QWidget, QVBoxLayout, QScrollArea
+        page = QWidget()
+        pv = QVBoxLayout(page)
+        pv.setContentsMargins(0, 0, 0, 0)
+        pv.addWidget(self.grading_panel)
+        pv.addWidget(self.plagiarism_panel)
+        pv.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(page)
+        self.content_stack.addWidget(scroll)
 
-        # 3. 反馈生成面板
+        # 3. 反馈面板（默认隐藏；保留实例供环境变量恢复时挂载）
         self.feedback_panel = FeedbackPanel(self)
-        self.content_stack.addWidget(self.feedback_panel)
 
         # 默认显示第一个面板（数据源）
         self.nav_list.setCurrentRow(0)
@@ -184,9 +269,8 @@ class MainWindow(QMainWindow):
 
         # 更新状态栏
         status_messages = {
-            "data_source": "数据源 - 选择班级压缩包（可多选），供各面板共用",
-            "grading": "自动评分 - 批量批阅学生作业",
-            "plagiarism": "查重检测 - 检测作业相似度",
+            "data_source": "数据源 - 选择班级压缩包（可多选），选学期与课程类型",
+            "grade_plag": "批阅与查重 - 一键出分数与相似对",
             "feedback": "反馈生成 - 生成学生反馈报告"
         }
 
@@ -269,15 +353,15 @@ class MainWindow(QMainWindow):
             self,
             "关于",
             f"""
-            <h3>教学管理系统 v{__version__}</h3>
-            <p>STM32F407 嵌入式教学平台专用工具</p>
+            <h3>单片机课程教学管理系统 v{__version__}</h3>
+            <p>单片机课程教学辅助工具（评分 / 查重 / 成绩管理）</p>
             <p><b>功能模块：</b></p>
             <ul>
+                <li>📁 数据源 - 班级压缩包选择</li>
                 <li>📊 自动评分 - 批量批阅学生作业</li>
                 <li>🔍 查重检测 - 检测作业相似度</li>
-                <li>💬 反馈生成 - 生成学生反馈报告</li>
             </ul>
-            <p><b>开发者：</b>STM32F407教学团队</p>
+            <p><b>开发者：</b>汽车工程学院单片机课程组</p>
             """
         )
 

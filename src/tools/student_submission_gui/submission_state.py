@@ -5,7 +5,7 @@
 Shared Submission State
 
 集中管理学生端「选中的报告 + 源码 + 身份 + 实验 + 上次自检结果」，
-供「我的作业 / 提交检测 / 自评结果」三个面板统一取用。
+供「提交作业 / 检测过程 / 反馈与改进」三个面板统一取用。
 
 通过模块级单例 shared() 访问；状态变更通过 Qt 信号通知各面板刷新。
 镜像教师端 tools.teaching_management_gui.data_source 的设计。
@@ -92,16 +92,18 @@ class SubmissionStateManager(QObject):
         self.state_changed.emit()
 
     def is_runnable(self) -> bool:
-        """是否满足「开始检测」条件：报告存在 + 身份完整 + 已选实验。
+        """是否满足「开始检测」条件：身份完整 + 已选实验（报告与源码均可选）。
 
-        源码可选——缺源码会丢编译/代码质量分，但检测与自评仍有意义。
+        - 缺源码：丢编译/代码质量反馈
+        - 缺报告（模板未发/阶段自检）：只跑代码侧反馈，报告类按缺失计
+        - 两者全缺：无意义，不允许开始
         """
         s = self._state
-        return (
-            bool(s.report_path and Path(s.report_path).exists())
-            and s.identity.is_complete()
-            and bool(s.experiment_code)
-        )
+        if not (s.identity.is_complete() and bool(s.experiment_code)):
+            return False
+        has_report = bool(s.report_path and Path(s.report_path).exists())
+        has_source = bool(s.source_path and Path(s.source_path).exists())
+        return has_report or has_source
 
     def clear(self) -> None:
         self._state = SubmissionState()

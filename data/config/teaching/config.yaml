@@ -23,6 +23,13 @@ experiments:
     rubric_path: "rubrics/final-project.json"
     description: "三选一综合设计；功能实现由教师实测评定，不在自检预测分内"
 
+  # 新能源汽车工程实训（电子控制方向）· STM32F103C8T6 两周实训
+  08-cabin-thermal:
+    name: "智能座舱温控系统设计（新能源实训）"
+    code: "08_cabin_thermal"
+    rubric_path: "rubrics/08-cabin-thermal.json"
+    description: "感知→决策→执行闭环：DHT11/光敏/热敏采集，OLED 显示，风扇调速/蜂鸣报警/氛围灯执行；例程见 src/projects/f1-*（common-f1 框架，make+arm-none-eabi-gcc 可编译）"
+
 # 班级配置
 classes:
   汽服2302B班:

@@ -95,7 +95,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='StudentSelfCheck',
+    name='MCU_SelfCheck',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

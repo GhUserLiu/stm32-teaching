@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-「我的作业」面板
+「提交作业」面板
 Files Panel — 输入入口
 
 选报告 + 选源码 + 身份 + 实验 + 「开始检测与自评」。
@@ -25,6 +25,33 @@ from tools.student_submission_gui.self_checker import SelfChecker
 from tools.student_submission_gui.workers.check_worker import CheckWorker
 
 
+def _ui_state_path() -> Path:
+    """学生端界面记忆（学期/上次实验）持久化文件。"""
+    from tools.common.path_config import PROJECT_ROOT
+    return PROJECT_ROOT / "data" / "config" / "teaching" / ".student_ui_state.json"
+
+
+def _load_ui_state() -> dict:
+    try:
+        import json
+        p = _ui_state_path()
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8")) or {}
+    except Exception:
+        pass
+    return {}
+
+
+def _save_ui_state(state: dict):
+    try:
+        import json
+        p = _ui_state_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _has_py7zr() -> bool:
     """当前环境是否可导入 py7zr（解压 .7z 所需，打包 exe 已内置，源码直跑可能缺）。"""
     try:
@@ -35,7 +62,7 @@ def _has_py7zr() -> bool:
 
 
 class FilesPanel(QWidget):
-    """「我的作业」面板。"""
+    """「提交作业」面板。"""
 
     def __init__(self, main_window):
         super().__init__()
@@ -57,7 +84,7 @@ class FilesPanel(QWidget):
         layout.addWidget(self._create_files_group())
         layout.addWidget(self._create_identity_group())
         layout.addWidget(self._create_action_group())
-        layout.addWidget(self._create_progress_group(), 1)
+        layout.addStretch(1)
 
     def _create_info_banner(self):
         box = QGroupBox("使用说明")
@@ -84,7 +111,7 @@ class FilesPanel(QWidget):
         grid.addWidget(QLabel("实验报告："), 0, 0)
         self.report_edit = QLineEdit()
         self.report_edit.setReadOnly(True)
-        self.report_edit.setPlaceholderText("必选 · 推荐 .docx")
+        self.report_edit.setPlaceholderText(".docx")
         grid.addWidget(self.report_edit, 0, 1)
         rep_btn = QPushButton("选择报告…")
         rep_btn.clicked.connect(self._pick_report)
@@ -104,7 +131,7 @@ class FilesPanel(QWidget):
         grid.addWidget(QLabel("源代码："), 3, 0)
         self.source_edit = QLineEdit()
         self.source_edit.setReadOnly(True)
-        self.source_edit.setPlaceholderText("可选 · .zip / .7z 压缩包（影响编译/代码质量分）")
+        self.source_edit.setPlaceholderText(".zip / .7z")
         grid.addWidget(self.source_edit, 3, 1)
         src_row = QHBoxLayout()
         zip_btn = QPushButton("选源码包…")
@@ -147,29 +174,142 @@ class FilesPanel(QWidget):
         form.addRow("学号：", self.id_edit)
         form.addRow("姓名：", self.name_edit)
 
-        # 实验下拉
+        # 学期下拉（每学期一套实验模板；默认最新学期或上次选择）
+        from tools.teaching_management_gui.path_helper import list_semesters
+        self.semester_combo = QComboBox()
+        semesters = list_semesters()
+        _saved = _load_ui_state()
+        _sem_saved = _saved.get("semester", "")
+        for s in semesters:
+            self.semester_combo.addItem(s)
+        if _sem_saved and _sem_saved in semesters:
+            self.semester_combo.setCurrentText(_sem_saved)
+        self.semester_combo.currentIndexChanged.connect(self._on_semester_changed)
+        form.addRow("学期：", self.semester_combo)
+        # 专业下拉（同学期不同专业实验集可不同；无专业区分的学期只有「全部」）
+        self.major_combo = QComboBox()
+        self._repopulate_majors(select=_saved.get("major", {}).get(_sem_saved, ""))
+        self.major_combo.currentIndexChanged.connect(self._on_major_changed)
+        form.addRow("专业：", self.major_combo)
+        # 课程类型下拉（理实一体课 / 整周实训；一次选择全局记忆）
+        self.ctype_combo = QComboBox()
+        self._repopulate_ctypes(select=_saved.get("course_type", ""))
+        self.ctype_combo.currentIndexChanged.connect(self._on_ctype_changed)
+        form.addRow("课程类型：", self.ctype_combo)
+
+        # 实验下拉（随学期联动；默认上次选择）
         self.experiment_combo = QComboBox()
-        for eid, name in experiment_choices():
-            self.experiment_combo.addItem(f"{name}（{eid}）", eid)
+        self._repopulate_experiments(restore=_saved.get("last_experiment", {}).get(
+            self._exp_key(), ""))
         self.experiment_combo.currentIndexChanged.connect(self._on_experiment_changed)
         form.addRow("实验：", self.experiment_combo)
 
         box.setLayout(form)
-        # 选中默认实验并同步到 state
-        self._select_default_experiment()
         return box
 
+    def _exp_key(self) -> str:
+        """实验记忆键：学期|专业（不同专业记住不同实验）。"""
+        sem = self.semester_combo.currentText() if hasattr(self, "semester_combo") else ""
+        maj = self.major_combo.currentText() if hasattr(self, "major_combo") else ""
+        ct = self.ctype_combo.currentText() if hasattr(self, "ctype_combo") else ""
+        return f"{sem}|{maj}|{ct}"
+
+    def _repopulate_ctypes(self, select: str = ""):
+        """按当前学期重填课程类型下拉（全部/理实一体课/整周实训…）。"""
+        from tools.teaching_management_gui.path_helper import list_course_types
+        sem = self.semester_combo.currentText() if hasattr(self, "semester_combo") else ""
+        self.ctype_combo.blockSignals(True)
+        self.ctype_combo.clear()
+        self.ctype_combo.addItem("全部")
+        for t in list_course_types(sem or None):
+            self.ctype_combo.addItem(t)
+        if select:
+            i = self.ctype_combo.findText(select)
+            if i >= 0:
+                self.ctype_combo.setCurrentIndex(i)
+        self.ctype_combo.blockSignals(False)
+
+    def _on_ctype_changed(self):
+        """课程类型切换：全局记忆并按 (学期,专业,类型) 重填实验列表。"""
+        saved = _load_ui_state()
+        saved["course_type"] = self.ctype_combo.currentText()
+        _save_ui_state(saved)
+        self._repopulate_experiments(
+            restore=saved.get("last_experiment", {}).get(self._exp_key(), ""))
+    def _repopulate_majors(self, select: str = ""):
+        """按当前学期重填专业下拉（来自学期模板 majors 声明；空则只有「全部」）。"""
+        from tools.teaching_management_gui.path_helper import list_majors
+        sem = self.semester_combo.currentText() if hasattr(self, "semester_combo") else ""
+        self.major_combo.blockSignals(True)
+        self.major_combo.clear()
+        self.major_combo.addItem("全部")
+        for m in list_majors(sem or None):
+            self.major_combo.addItem(m)
+        if select:
+            i = self.major_combo.findText(select)
+            if i >= 0:
+                self.major_combo.setCurrentIndex(i)
+        self.major_combo.blockSignals(False)
+
+    def _on_major_changed(self):
+        """专业切换：记忆专业并按 (学期, 专业) 重填实验列表。"""
+        sem = self.semester_combo.currentText() if hasattr(self, "semester_combo") else ""
+        maj = self.major_combo.currentText() if hasattr(self, "major_combo") else ""
+        saved = _load_ui_state()
+        saved.setdefault("major", {})[sem] = maj
+        _save_ui_state(saved)
+        self._repopulate_experiments(            restore=saved.get("last_experiment", {}).get(self._exp_key(), ""))
+    def _repopulate_experiments(self, restore: str = ""):
+        """按当前学期重填实验下拉；restore=上次选的实验 id（记忆功能）。"""
+        from tools.teaching_management_gui.path_helper import load_experiments
+        sem = self.semester_combo.currentText() if hasattr(self, "semester_combo") else None
+        self.experiment_combo.blockSignals(True)
+        self.experiment_combo.clear()
+        maj = self.major_combo.currentText() if hasattr(self, "major_combo") else ""
+        ct = self.ctype_combo.currentText() if hasattr(self, "ctype_combo") else ""
+        choices = load_experiments(sem or None,
+                                   None if maj in ("", "全部") else maj,
+                                   None if ct in ("", "全部") else ct)
+        # load_experiments 返回 [{'id','name'}] 字典列表，逐项取键
+        for e in choices:
+            self.experiment_combo.addItem(f"{e['name']}（{e['id']}）", e['id'])
+        idx = 0
+        if restore:
+            for i in range(self.experiment_combo.count()):
+                if self.experiment_combo.itemData(i) == restore:
+                    idx = i
+                    break
+        self.experiment_combo.setCurrentIndex(idx)
+        self.experiment_combo.blockSignals(False)
+        # blockSignals 期间无信号，显式同步到 state
+        self._on_experiment_changed()
+
+    def _on_semester_changed(self):
+        """学期切换：重填专业→实验列表并同步到 state（自检按学期模板取评分标准）。"""
+        sem = self.semester_combo.currentText()
+        shared().semester = sem
+        saved = _load_ui_state()
+        saved["semester"] = sem
+        _save_ui_state(saved)
+        self._repopulate_majors(select=saved.get("major", {}).get(sem, ""))
+        self._repopulate_ctypes(select=saved.get("course_type", ""))
+        self._repopulate_experiments(
+            restore=saved.get("last_experiment", {}).get(self._exp_key(), ""))
+
     def _select_default_experiment(self):
-        """选中默认实验（07-car-gear）并显式同步到 state。
+        """恢复上次选择的实验（记忆功能，替代旧的固定 07-car-gear）。
 
         显式调用 _on_experiment_changed，避免「无索引变化」时 Qt 不触发
         currentIndexChanged 导致 combo 与 state 不一致。
         """
-        target = "07-car-gear"
-        for i in range(self.experiment_combo.count()):
-            if self.experiment_combo.itemData(i) == target:
-                self.experiment_combo.setCurrentIndex(i)
-                break
+        saved = _load_ui_state()
+        sem = self.semester_combo.currentText() if hasattr(self, "semester_combo") else ""
+        target = saved.get("last_experiment", {}).get(sem, "")
+        if target:
+            for i in range(self.experiment_combo.count()):
+                if self.experiment_combo.itemData(i) == target:
+                    self.experiment_combo.setCurrentIndex(i)
+                    break
         self._on_experiment_changed()
 
     def _create_action_group(self):
@@ -197,19 +337,12 @@ class FilesPanel(QWidget):
         return w
 
     def _create_progress_group(self):
-        box = QGroupBox("进度与日志")
-        v = QVBoxLayout()
-        self.progress = QProgressBar()
-        self.progress.setFormat("%p%")
-        v.addWidget(self.progress)
-        self.detail_label = QLabel("等待开始…")
-        v.addWidget(self.detail_label)
-        self.log_view = QPlainTextEdit()
-        self.log_view.setReadOnly(True)
-        self.log_view.setFont(QFont("Consolas", 9))
-        v.addWidget(self.log_view, 1)
-        box.setLayout(v)
-        return box
+        """已废弃：进度与日志合并到「② 检测过程」页（消除两处重复展示）。"""
+        return None
+
+    def _cp(self):
+        """检测过程面板（进度/日志承接方）。"""
+        return getattr(self.main_window, "check_panel", None)
 
     # ---------------- 文件选择 ----------------
     def _pick_report(self):
@@ -283,6 +416,16 @@ class FilesPanel(QWidget):
         shared().update(identity=ident)
 
     def _on_experiment_changed(self):
+
+        # 记忆上次实验选择（按学期）
+        try:
+            _s = _load_ui_state()
+            _s.setdefault("last_experiment", {})[self._exp_key()] = (
+                self.experiment_combo.currentData() or "")
+            _save_ui_state(_s)
+            shared().semester = self.semester_combo.currentText()
+        except Exception:
+            pass
         eid = self.experiment_combo.currentData()
         shared().update(experiment_code=eid or "")
 
@@ -296,9 +439,10 @@ class FilesPanel(QWidget):
             QMessageBox.warning(self, "无法开始", "请先选择实验报告并填写完整的学生信息。")
             return
         self._set_running(True)
-        self.log_view.clear()
-        self.progress.setValue(0)
-        self.detail_label.setText("初始化…")
+        cp = self._cp()
+        if cp is not None:
+            cp.begin_run()
+            self.main_window.navigate("result")
         self.log(f"[{datetime.now():%H:%M:%S}] 开始检测与自评")
 
         self.worker = CheckWorker()
@@ -320,7 +464,9 @@ class FilesPanel(QWidget):
             return
         w.cancel()
         self.log("已请求取消（后台编译需运行至结束，结果将被忽略）")
-        self.detail_label.setText("取消中…")
+        cp = self._cp()
+        if cp is not None:
+            cp.set_detail("取消中…")
         self.cancel_btn.setEnabled(False)
         # 不在 GUI 线程 wait：长编译会冻结界面。按钮最终态由 finished_run 哨兵
         # （线程真正结束）恢复，避免在旧 worker 仍运行时启动新一轮。
@@ -347,24 +493,29 @@ class FilesPanel(QWidget):
         self.cancel_btn.setEnabled(running)
 
     def _on_stage_started(self, sid, name):
-        self.detail_label.setText(name)
+        cp = self._cp()
+        if cp is not None:
+            cp.set_detail(name)
 
     def _on_stage_progress(self, sid, cur, total):
-        if total > 0:
-            self.progress.setRange(0, 100)
-            self.progress.setValue(int(cur / total * 100))
+        cp = self._cp()
+        if cp is not None:
+            cp.set_progress(cur, total)
 
     def _on_worker_finished(self):
         """QThread 内置 finished：丢弃 worker 引用，便于对象回收与新一轮启动。"""
         self.worker = None
 
     def _on_cancelled(self):
-        self.detail_label.setText("已取消")
+        cp = self._cp()
+        if cp is not None:
+            cp.set_detail("已取消")
         self.log("已取消，结果未应用。")
 
     def _on_result(self, result):
-        self.progress.setValue(100)
-        self.detail_label.setText("完成")
+        cp = self._cp()
+        if cp is not None:
+            cp.finish_run()
         # 清理上一轮遗留的临时解压目录；本轮 tempdir 由结果持有，展示期间保留
         SelfChecker.cleanup(self._live_tempdirs)
         self._live_tempdirs = list(result.temp_dirs)
@@ -375,17 +526,21 @@ class FilesPanel(QWidget):
         QMessageBox.information(
             self, "自检完成",
             f"预测得分：{result.grading.total_score:.1f}/{result.grading.max_score:.1f}（等级 {result.grading.grade}）\n"
-            "请查看「提交检测」与「自评结果」。"
+            "请查看「检测过程」与「反馈与改进」。"
         )
-        self.main_window.navigate("check")
+        self.main_window.navigate("result")
 
     def _on_failed(self, msg):
-        self.detail_label.setText("失败")
+        cp = self._cp()
+        if cp is not None:
+            cp.set_detail("失败")
         QMessageBox.critical(self, "自检失败", msg)
 
     # ---------------- 刷新 ----------------
     def log(self, message: str):
-        self.log_view.appendPlainText(f"[{datetime.now():%H:%M:%S}] {message}")
+        cp = self._cp()
+        if cp is not None:
+            cp.append_log(message)
 
     def refresh(self):
         """供主窗口「重置」调用：清空本地输入并恢复默认实验。"""
@@ -397,9 +552,9 @@ class FilesPanel(QWidget):
         self.class_edit.clear()
         self.id_edit.clear()
         self.name_edit.clear()
-        self.log_view.clear()
-        self.progress.setValue(0)
-        self.detail_label.setText("等待开始…")
+        cp = self._cp()
+        if cp is not None:
+            cp.begin_run()
         SelfChecker.cleanup(self._live_tempdirs)
         self._live_tempdirs = []
         # 恢复默认实验并同步 state（避免 combo 显示实验而 state 为空）

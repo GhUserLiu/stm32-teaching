@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-「提交检测」面板
+「检测过程」面板
 Check Panel — ValidationReport 展示
 
 展示提交完整性/规范校验：pass/fail、issues 表、章节一~七 checklist、思考题 Q1~Q7。
@@ -23,7 +23,7 @@ _SEVERITY_COLOR = {"error": "#c0392b", "warning": "#e67e22", "info": "#7f8c8d"}
 
 
 class CheckPanel(QWidget):
-    """「提交检测」面板。"""
+    """「检测过程」面板。"""
 
     def __init__(self, main_window):
         super().__init__()
@@ -37,16 +37,58 @@ class CheckPanel(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
-        # 头部：徽标 + 计数 + 跳转
-        layout.addWidget(self._create_header())
+        # 顶部：检测进度与实时日志（由「① 提交作业」的开始按钮驱动）
+        layout.addWidget(self._create_progress_group())
 
+        # 主体：提交规范问题（总结论与得分在下方「反馈与改进」区，不重复展示）
         body = QHBoxLayout()
         body.addWidget(self._create_issues_group(), 3)
         right = QVBoxLayout()
         right.addWidget(self._create_sections_group())
-        right.addWidget(self._create_questions_group(), 1)
         body.addLayout(right, 1)
         layout.addLayout(body, 1)
+
+    # ---------------- 进度与日志（承接自①页，消除重复展示） ----------------
+    def _create_progress_group(self):
+        from PyQt6.QtWidgets import QProgressBar, QPlainTextEdit
+        from PyQt6.QtGui import QFont
+        box = QGroupBox("检测进度与日志")
+        v = QVBoxLayout()
+        self.run_progress = QProgressBar()
+        self.run_progress.setFormat("%p%")
+        v.addWidget(self.run_progress)
+        self.run_detail = QLabel("等待开始——到「① 提交作业」选好文件点开始检测")
+        v.addWidget(self.run_detail)
+        self.run_log = QPlainTextEdit()
+        self.run_log.setReadOnly(True)
+        self.run_log.setFont(QFont("Consolas", 9))
+        self.run_log.setMaximumHeight(150)
+        v.addWidget(self.run_log)
+        box.setLayout(v)
+        return box
+
+    def begin_run(self):
+        """新一轮检测开始：清日志、进度归零。"""
+        self.run_log.clear()
+        self.run_progress.setRange(0, 100)
+        self.run_progress.setValue(0)
+        self.run_detail.setText("初始化…")
+
+    def set_detail(self, text: str):
+        self.run_detail.setText(text)
+
+    def set_progress(self, cur: int, total: int):
+        if total > 0:
+            self.run_progress.setRange(0, 100)
+            self.run_progress.setValue(int(cur / total * 100))
+
+    def append_log(self, message: str):
+        from datetime import datetime
+        self.run_log.appendPlainText(f"[{datetime.now():%H:%M:%S}] {message}")
+
+    def finish_run(self):
+        self.run_progress.setValue(100)
+        self.run_detail.setText("完成 ✓")
 
     def _create_header(self):
         box = QGroupBox("检测结果")
@@ -58,14 +100,11 @@ class CheckPanel(QWidget):
         self.count_label = QLabel("")
         self.count_label.setStyleSheet("font-size:14px;")
         row.addWidget(self.count_label)
-        go_grade = QPushButton("查看自评结果 →")
-        go_grade.clicked.connect(lambda: self.main_window.navigate("grade"))
-        row.addWidget(go_grade)
         box.setLayout(row)
         return box
 
     def _create_issues_group(self):
-        box = QGroupBox("问题清单（含修正建议）")
+        box = QGroupBox("提交规范问题（格式 / 章节 / 思考题规范——不直接影响得分）")
         v = QVBoxLayout()
         self.issues_table = QTableWidget(0, 5)
         self.issues_table.setHorizontalHeaderLabels(["严重度", "规则", "章节", "描述", "修正建议"])
@@ -104,40 +143,26 @@ class CheckPanel(QWidget):
     def refresh(self):
         result = shared().state().last_result
         if not result or result.validation is None:
-            self.badge.setText("—")
-            self.badge.setStyleSheet("font-size:20px; color:#7f8c8d;")
-            self.count_label.setText("请先在「我的作业」中开始检测")
-            self.count_label.setToolTip("")
-            self.count_label.setStyleSheet("font-size:14px;")
             self.issues_table.setRowCount(0)
             self._clear_grid(self.sections_grid)
-            self.questions_label.setText("—")
             return
 
         v = result.validation
-        # 徽标
-        if v.passed:
-            self.badge.setText("✅ 通过")
-            self.badge.setStyleSheet("font-size:20px; font-weight:bold; color:#27ae60;")
-        else:
-            self.badge.setText("❌ 存在问题")
-            self.badge.setStyleSheet("font-size:20px; font-weight:bold; color:#c0392b;")
-        self.count_label.setText(
-            f"错误 {v.error_count} · 警告 {v.warning_count} · "
-            f"提示 {sum(1 for i in v.issues if i.severity == 'info')}"
-        )
-        # 自检 warning（非阻塞，如团队表学号位数不规范）不在 issues 表里，单独提示：
-        # 这些项在打包阶段会升级为 blocker，提前在此可见，避免到打包才撞墙。
+
+        # 自检 warning（非阻塞，如团队表学号位数不规范）不在 issues 表里，
+        # 在进度行单独提示：这些项在打包阶段会升级为 blocker，提前可见。
         warnings = list(getattr(result, "warnings", []) or [])
         if warnings:
-            self.count_label.setText(
-                self.count_label.text() + f"  · 自检提示 {len(warnings)} 条")
-            self.count_label.setToolTip(
+            self.run_detail.setText(
+                f"完成 ✓  ·  错误 {v.error_count} · 警告 {v.warning_count}"
+                f"  ·  自检提示 {len(warnings)} 条（打包时会拦截，见日志）")
+            self.run_detail.setToolTip(
                 "自检提示（非阻塞，但打包时会拦截）：\n" + "\n".join(warnings))
-            self.count_label.setStyleSheet("font-size:14px; color:#e67e22;")
         else:
-            self.count_label.setToolTip("")
-            self.count_label.setStyleSheet("font-size:14px;")
+            self.run_detail.setText(
+                f"完成 ✓  ·  错误 {v.error_count} · 警告 {v.warning_count}"
+                f" · 提示 {sum(1 for i in v.issues if i.severity == 'info')}")
+            self.run_detail.setToolTip("")
 
         # 问题清单
         issues = sorted(v.issues, key=lambda i: {"error": 0, "warning": 1, "info": 2}.get(i.severity, 3))
@@ -153,25 +178,8 @@ class CheckPanel(QWidget):
                     item.setForeground(self._brush(it.severity))
                 self.issues_table.setItem(r, c, item)
 
-        # 章节 checklist
+        # 章节 checklist（思考题核对见下方「反馈与改进」区，不重复展示）
         self._render_sections(v.sections)
-
-        # 思考题
-        grading = result.grading
-        answered = [t.get("id") for t in grading.thinking_check if t.get("answered")]
-        missing = list(v.missing_questions or [])
-        if not grading.thinking_check:
-            self.questions_label.setText("（未生成思考题核对）")
-        elif missing:
-            self.questions_label.setText(
-                f"已检测到作答：{', '.join(answered) or '无'}\n"
-                f"未检测到题号：{', '.join(missing)}\n"
-                "（提示：在七、思考题中按 Q1~Q7 显式标注题号以便核对）"
-            )
-            self.questions_label.setStyleSheet("color:#e67e22;")
-        else:
-            self.questions_label.setText("✅ Q1~Q7 均已检测到作答")
-            self.questions_label.setStyleSheet("color:#27ae60;")
 
     @staticmethod
     def _brush(severity: str):

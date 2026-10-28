@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-「自评结果」面板
+「反馈与改进」面板
 Grade Panel — GradingResult 展示
 
 预测得分、各类别得分（编译行按 SKIPPED/FAILED/SUCCESS 区分着色）、
@@ -32,7 +32,7 @@ _METHOD_LABEL = {
 
 
 class GradePanel(QWidget):
-    """「自评结果」面板。"""
+    """「反馈与改进」面板。"""
 
     def __init__(self, main_window):
         super().__init__()
@@ -163,7 +163,7 @@ class GradePanel(QWidget):
             self.score_label.setText("—")
             self.score_label.setStyleSheet("font-size:32px; color:#7f8c8d;")
             self.grade_label.setText("")
-            self.bonus_label.setText("请先在「我的作业」中开始检测与自评")
+            self.bonus_label.setText("请先在「提交作业」中开始检测与自评")
             self.cat_table.setRowCount(0)
             self.issues_table.setRowCount(0)
             self.thinking_table.setRowCount(0)

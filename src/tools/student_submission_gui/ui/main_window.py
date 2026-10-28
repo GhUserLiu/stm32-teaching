@@ -5,9 +5,9 @@
 Student Self-Check & Self-Grade Main Window
 
 侧边栏三面板：
-- 我的作业：选报告 + 选源码 + 身份 + 实验 + 开始检测
-- 提交检测：完整性/规范校验结果（ValidationReport）
-- 自评结果：rubric 预测得分 + 失分与改进（GradingResult）
+- 提交作业：选报告 + 选源码 + 身份 + 实验 + 开始检测
+- 检测过程：完整性/规范校验结果（ValidationReport）
+- 反馈与改进：rubric 预测得分 + 失分与改进（GradingResult）
 """
 
 from ..qt_compat import (
@@ -24,14 +24,88 @@ from tools.student_submission_gui.submission_state import shared
 from tools.student_submission_gui import __version__
 
 
+# 全局视觉主题（浅底卡片风）：主窗口设置后作用于全部子控件
+APP_QSS = """
+QWidget { background-color: #f4f6f9; color: #1f2937; font-size: 13px; font-family: "Microsoft YaHei","PingFang SC",sans-serif; }
+QLabel { background: transparent; }
+
+QGroupBox {
+    background-color: #ffffff;
+    border: 1px solid #dde5f0;
+    border-radius: 8px;
+    margin-top: 20px;
+    padding: 16px 12px 12px 12px;
+    font-weight: bold;
+    color: #2563eb;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px; top: 2px; padding: 0 4px;
+    color: #2563eb;
+}
+
+QPushButton {
+    background-color: #eef3fb; color: #1f2937;
+    border: 1px solid #c9d6ea; border-radius: 6px;
+    padding: 6px 16px;
+}
+QPushButton:hover { background-color: #dfe9f9; border-color: #b8c4d4; }
+QPushButton:pressed { background-color: #cfe0f7; }
+QPushButton:disabled { color: #93a3b8; background-color: #f2f5fa; }
+
+QLineEdit, QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #c9d6ea; border-radius: 5px;
+    padding: 4px 8px;
+    selection-background-color: #dbeafe;
+}
+QLineEdit:focus, QComboBox:focus { border: 1px solid #3498db; }
+QComboBox::drop-down { border: none; width: 22px; }
+QComboBox QAbstractItemView {
+    background: #ffffff; border: 1px solid #c9d6ea;
+    selection-background-color: #dbeafe; selection-color: #1f2937;
+}
+
+QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #dde5f0; border-radius: 6px;
+    gridline-color: #e6ecf5;
+    alternate-background-color: #f6f9fd;
+}
+QHeaderView::section {
+    background-color: #2563eb; color: #ffffff;
+    border: none; padding: 6px 8px;
+    font-weight: bold;
+}
+QTableWidget::item { padding: 4px 6px; }
+QTableWidget::item:selected { background-color: #dbeafe; color: #1f2937; }
+
+QProgressBar {
+    background-color: #ffffff; border: 1px solid #dde5f0;
+    border-radius: 5px; text-align: center; height: 16px;
+}
+QProgressBar::chunk { background-color: #16a085; border-radius: 4px; }
+
+QPlainTextEdit, QTextEdit {
+    background-color: #ffffff;
+    border: 1px solid #dde5f0; border-radius: 6px;
+}
+
+QScrollArea { border: none; background: transparent; }
+QStatusBar { background-color: #ffffff; border-top: 1px solid #dde5f0; }
+QMenuBar { background-color: #ffffff; }
+QMenuBar::item:selected { background-color: #dbeafe; }
+QMenu { background-color: #ffffff; border: 1px solid #dde5f0; }
+QMenu::item:selected { background-color: #dbeafe; }
+"""
+
 # 导航项：(id, 显示名, tooltip, 状态栏文案)
 NAV_ITEMS = [
-    ("files", "📁 我的作业", "选择报告与源码，填写身份后开始检测与自评",
-     "我的作业 — 选择报告与源码"),
-    ("check", "✅ 提交检测", "检查文件格式/齐全/章节/思考题等提交规范",
-     "提交检测 — 提交规范与完整性校验"),
-    ("grade", "📊 自评结果", "查看预测得分、逐项失分与改进建议",
-     "自评结果 — 预测得分与改进建议（仅供参考）"),
+    ("files", "① 提交作业", "选学期/专业/实验，选择报告与源码",
+     "提交作业 — 选择报告与源码"),
+    ("result", "② 反馈与改进", "检测进度与日志、提交规范问题清单、逐项得分与改进建议",
+     "反馈与改进 — 问题清单、得分与改进建议"),
 ]
 
 
@@ -40,6 +114,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.setStyleSheet(APP_QSS)
         self._panel_index = {}   # panel_id -> stacked index
         self.setup_ui()
         self.setup_menu_bar()
@@ -48,7 +123,7 @@ class MainWindow(QMainWindow):
 
     # ---------------- UI ----------------
     def setup_ui(self):
-        self.setWindowTitle(f"学生端 · 作业自检与自评系统 v{__version__}")
+        self.setWindowTitle(f"单片机课程 · 作业自检与自评系统 v{__version__}")
         self.setMinimumSize(1100, 760)
 
         central = QWidget()
@@ -86,11 +161,11 @@ class MainWindow(QMainWindow):
         sidebar = QWidget()
         sidebar.setFixedWidth(210)
         sidebar.setStyleSheet("""
-            QWidget { background-color: #2c3e50; color: white; }
+            QWidget { background-color: #1f2937; color: white; }
             QListWidget { background-color: transparent; border: none; padding: 10px; }
             QListWidget::item { padding: 15px; margin: 2px 0; border-radius: 5px; color: white; }
-            QListWidget::item:hover { background-color: #34495e; }
-            QListWidget::item:selected { background-color: #16a085; font-weight: bold; }
+            QListWidget::item:hover { background-color: #2563eb; }
+            QListWidget::item:selected { background-color: #2563eb; font-weight: bold; }
             QLabel { padding: 10px; font-size: 14px; font-weight: bold; }
         """)
         layout = QVBoxLayout(sidebar)
@@ -111,7 +186,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.nav_list)
 
         layout.addStretch()
-        hint = QLabel("提交前自检\n机器预测，以教师为准")
+        hint = QLabel("提交前自检\n机器预测，以教师为准\n汽车工程学院单片机课程组")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setStyleSheet("color: #95a5a6; font-size: 12px;")
         layout.addWidget(hint)
@@ -121,10 +196,24 @@ class MainWindow(QMainWindow):
         self.files_panel = FilesPanel(self)
         self.check_panel = CheckPanel(self)
         self.grade_panel = GradePanel(self)
+
+        # ② 反馈与改进 = 检测过程 + 得分改进 同页纵排（消除两页内容重复）
+        from PyQt6.QtWidgets import QWidget, QVBoxLayout, QScrollArea
+        result_page = QWidget()
+        rp_layout = QVBoxLayout(result_page)
+        rp_layout.setContentsMargins(0, 0, 0, 0)
+        self.check_panel.setSizePolicy(self.check_panel.sizePolicy())
+        rp_layout.addWidget(self.check_panel)
+        rp_layout.addWidget(self.grade_panel)
+        rp_layout.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(result_page)
+
         for panel_id, panel in [
             ("files", self.files_panel),
-            ("check", self.check_panel),
-            ("grade", self.grade_panel),
+            ("result", scroll),
         ]:
             idx = self.content_stack.addWidget(panel)
             self._panel_index[panel_id] = idx
@@ -132,7 +221,7 @@ class MainWindow(QMainWindow):
 
     # ---------------- 导航 ----------------
     def navigate(self, panel_id: str):
-        """供面板调用切换（如检测完成后跳到「提交检测」）。"""
+        """供面板调用切换（如检测完成后跳到「检测过程」）。"""
         idx = self._panel_index.get(panel_id)
         if idx is not None:
             self.nav_list.setCurrentRow(idx)
@@ -206,16 +295,16 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self, "关于",
             f"""
-            <h3>学生端 · 作业自检与自评系统 v{__version__}</h3>
+            <h3>单片机课程 · 作业自检与自评系统 v{__version__}</h3>
             <p>提交前用本地文件自检与自评的辅助工具。</p>
             <p><b>功能：</b></p>
             <ul>
-                <li>✅ 提交检测：报告/源码格式、章节、思考题等规范校验</li>
-                <li>📊 自评结果：按评分标准预测得分与改进建议</li>
+                <li>✅ 检测过程：报告/源码格式、章节、思考题等规范校验</li>
+                <li>📊 反馈与改进：按评分标准预测得分与改进建议</li>
             </ul>
             <p><b>说明：</b>编译检查需本机安装 make + arm-none-eabi-gcc；未安装时该项记 0 分但状态为「已跳过」，不代表代码无法编译。
             学习态度为教师评定项；组长加分由报告团队信息自动判定；机器预测分仅供参考。</p>
-            <p><b>开发者：</b>STM32F407 教学团队</p>
+            <p><b>开发者：</b>汽车工程学院单片机课程组</p>
             """
         )
 

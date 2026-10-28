@@ -126,15 +126,77 @@ def parse_class_experiment_from_zip(stem: str) -> Tuple[str, Optional[str]]:
 
 
 # ---- 已知实验（下拉框数据源 + 自动匹配）----
-# 优先从 data/config/teaching/config.yaml 的 experiments 段读取；读取失败时回退内置清单
+# 加载链（2026-10 学期模板机制）：
+#   1) data/semesters/<学期>/experiments.yaml —— 每学期一套标准（推荐，年度只改数据不改程序）
+#   2) data/config/teaching/config.yaml 的 experiments 段 —— 全局回退（兼容旧数据）
+#   3) 内置清单 —— 最后回退
 _DEFAULT_EXPERIMENTS = [
     {"id": "07-car-gear", "name": "汽车档位模拟器设计"},
     {"id": "01-turn-signal", "name": "转向灯控制系统"},
 ]
 
+SEMESTERS_DIR = PROJECT_ROOT / "data" / "semesters"
 
-def load_experiments() -> list:
-    """读取已知实验列表 [{id, name}, ...]。优先 config.yaml，失败回退内置清单。"""
+
+def list_semesters() -> list:
+    """列出已有学期模板（data/semesters/ 下含 experiments.yaml 的目录），新→旧排序。"""
+    result = []
+    try:
+        if SEMESTERS_DIR.exists():
+            for d in SEMESTERS_DIR.iterdir():
+                if d.is_dir() and (d / "experiments.yaml").exists():
+                    result.append(d.name)
+    except Exception:
+        pass
+    return sorted(result, reverse=True)
+
+
+def load_experiments(semester: str = None, major: str = None,
+                     course_type: str = None) -> list:
+    """读取实验列表 [{id, name}, ...]。
+
+    Args:
+        semester: 学期名（如 "2026-秋季"）。给定时优先读该学期模板。
+        major:    专业名。按条目 majors 过滤（未标 = 全专业通用）。
+        course_type: 课程类型（"理实一体课" / "整周实训"）。按条目 type 过滤
+                  （未标 = 不限）。默认不过滤。
+    """
+    def _major_ok(info: dict) -> bool:
+        if not major:
+            return True
+        majors = info.get("majors")
+        if not majors:                      # 未声明 = 全专业通用
+            return True
+        return any(major in m for m in majors)
+
+    def _type_ok(info: dict) -> bool:
+        if not course_type or course_type in ("", "全部"):
+            return True
+        return info.get("type") == course_type
+
+    # 1) 学期模板
+    if semester:
+        try:
+            import yaml
+            sem_path = SEMESTERS_DIR / semester / "experiments.yaml"
+            if sem_path.exists():
+                with open(sem_path, encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                exps = data.get("experiments") or {}
+                result = []
+                for eid, info in exps.items():
+                    if not isinstance(info, dict):
+                        continue
+                    if not _major_ok(info):
+                        continue
+                    if not _type_ok(info):
+                        continue
+                    result.append({"id": eid, "name": info.get("name", eid)})
+                if result:
+                    return result
+        except Exception:
+            pass
+    # 2) 全局 config.yaml（旧行为，保持兼容；无 majors 概念即全通过）
     try:
         import yaml  # PyYAML（可选）
         cfg_path = PROJECT_ROOT / "data" / "config" / "teaching" / "config.yaml"
@@ -154,9 +216,63 @@ def load_experiments() -> list:
     return list(_DEFAULT_EXPERIMENTS)
 
 
-def experiment_choices() -> list:
+def list_course_types(semester: str = None) -> list:
+    """列出某学期出现过的课程类型（experiments.yaml 条目 type 字段并集）。
+
+    常见取值："理实一体课"、"整周实训"。无声明时返回 []（调用方隐藏/置「全部」）。
+    """
+    try:
+        import yaml
+        if not semester:
+            return []
+        sem_path = SEMESTERS_DIR / semester / "experiments.yaml"
+        if not sem_path.exists():
+            return []
+        with open(sem_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        types = []
+        for info in (data.get("experiments") or {}).values():
+            if isinstance(info, dict):
+                t = info.get("type")
+                if t and t not in types:
+                    types.append(t)
+        return types
+    except Exception:
+        return []
+
+
+def list_majors(semester: str = None) -> list:
+    """列出某学期出现过的专业（experiments.yaml 条目 majors 字段的并集，去重）。
+
+    无学期模板或无任何 majors 声明时返回 []（调用方据此隐藏专业下拉）。
+    """
+    try:
+        import yaml
+        if not semester:
+            return []
+        sem_path = SEMESTERS_DIR / semester / "experiments.yaml"
+        if not sem_path.exists():
+            return []
+        with open(sem_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        majors = []
+        for info in (data.get("experiments") or {}).values():
+            if isinstance(info, dict):
+                for grp in info.get("majors") or []:
+                    for m in grp.split("、"):
+                        m = m.strip()
+                        if m and m not in majors:
+                            majors.append(m)
+        return majors
+    except Exception:
+        return []
+
+
+def experiment_choices(semester: str = None, major: str = None,
+                       course_type: str = None) -> list:
     """[(id, name), ...] 供下拉框使用。"""
-    return [(e["id"], e["name"]) for e in load_experiments()]
+    return [(e["id"], e["name"]) for e in
+            load_experiments(semester, major, course_type)]
 
 
 def match_experiment(text: str) -> Optional[str]:
