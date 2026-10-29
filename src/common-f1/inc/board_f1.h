@@ -5,7 +5,9 @@
  * 引脚分配依据（官方《[野火小智]STM32F103C8核心板_双USB款_引脚分配表》）：
  *   LED      板载 RGB：LED_R=PA1 LED_G=PA2 LED_B=PA3（本框架默认用红 PA1）
  *   KEY      板载 KEY1=PA0（低电平按下）；KEY2=PC13 备用（进阶可用）
- *   BUZZER   PC2   高电平响（有源蜂鸣器模块）
+ *   BUZZER   PB5   高电平响（有源蜂鸣器模块）
+ *           （注意：C8T6/LQFP48 的 C 口只有 PC13~PC15——PC0~PC12 物理不存在，
+ *            早期方案的 PC2 因此作废，2026-10 实物核对后改 PB5）
  *   DHT11    PB12  单总线（对齐官方例程 [29]）
  *   OLED     SCL=PB6 SDA=PB7（软件 I2C，0.96 寸 SSD1306 4Pin；与官方 [31] 同脚）
  *   光敏     PA4   ADC1_IN4（对齐官方例程 [21-2] Light_AO=PA4）
@@ -68,13 +70,13 @@ static inline int board_key_pressed(void)  /* 1=按下 */
     return !gpio_read(KEY_PORT, KEY_PIN);
 }
 
-/* ---- 蜂鸣器（有源，高电平响） ---- */
-#define BUZZER_PORT  GPIOC
-#define BUZZER_PIN   2
+/* ---- 蜂鸣器（有源，高电平响；PB5——C8T6 无 PC0~PC12） ---- */
+#define BUZZER_PORT  GPIOB
+#define BUZZER_PIN   5
 
 static inline void board_buzzer_init(void)
 {
-    RCC->APB2ENR |= RCC_APB2ENR_IOPC;
+    RCC->APB2ENR |= RCC_APB2ENR_IOPB;
     gpio_init(BUZZER_PORT, BUZZER_PIN, GPIO_MODE_OUT_PP_2);
     gpio_reset(BUZZER_PORT, BUZZER_PIN);
 }

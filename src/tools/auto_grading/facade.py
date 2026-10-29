@@ -121,6 +121,68 @@ class AutoGradingFacade:
             rubric_path=rubric_path if rubric_path.exists() else None,
         )
 
+    def _apply_manual_overrides(self, grading_results, entries, semester: str) -> int:
+        """批阅后自动套用教师调分（results/grading/manual_overrides.json）。
+
+        与教师端双击调分对话框同一存储格式：{student_id: {adjust:{cat:分},...}}。
+        manual 类别（details 含 manual 标记）按 adjust 值覆盖并重算总分/等级，
+        非 manual 类别忽略（防手改 json 冲击机器分）。返回应用人数。
+        """
+        import json
+
+        # 按班级+实验定位 overrides 文件（一班一实验的常规场景）
+        override_map = {}      # (class_name) -> (exp_id, {sid: adjust})
+        for e in entries:
+            try:
+                gdir = self.config.get_output_dir(
+                    getattr(e, "class_name", ""), getattr(e, "experiment_id", ""),
+                    semester)
+            except Exception:
+                continue
+            f = gdir / "manual_overrides.json"
+            if f.exists():
+                try:
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                override_map[getattr(e, "class_name", "")] = data
+
+        if not override_map:
+            return 0
+
+        applied = 0
+        for r in grading_results:
+            data = override_map.get(r.class_name)
+            if not data:
+                continue
+            rec = data.get(r.student_id)
+            if not rec:
+                continue
+            adjust = rec.get("adjust") or {}
+            touched = False
+            for cs in r.category_scores:
+                if cs.category_id in adjust and any(
+                        isinstance(d, dict) and d.get("manual")
+                        for d in (cs.details or [])):
+                    try:
+                        new_val = float(adjust[cs.category_id])
+                    except (TypeError, ValueError):
+                        continue
+                    if abs(new_val - float(cs.earned_points)) > 1e-6:
+                        cs.earned_points = new_val
+                        cs.details = [{"feedback": f"教师调分已套用 {new_val:g} 分",
+                                       "manual": True}]
+                        touched = True
+            if touched or True:      # 有记录即重算（默认分即套用值时也刷新等级）
+                r.total_score = sum(float(cs.earned_points)
+                                    for cs in r.category_scores)
+                r.grade = ("A" if r.total_score >= 90 else
+                           "B" if r.total_score >= 80 else
+                           "C" if r.total_score >= 70 else
+                           "D" if r.total_score >= 60 else "F")
+                applied += 1
+        return applied
+
     def run_full_pipeline(
         self,
         class_zip: Path,
@@ -204,6 +266,20 @@ class AutoGradingFacade:
         grading_results = self.engine.batch_grade(submissions)
         result.grading_results = grading_results
         result.successful_graded = len(grading_results)
+
+        # 阶段3b: 应用教师调分（manual_overrides.json——批阅后自动套用，
+        # 重批不再冲掉答辩周已调的出勤/子系统/答辩/进阶等实测分）。
+        # entries 供定位 overrides 文件；skip_organization 时无 entries，
+        # 退化为按 (提交班级 × 流水线实验id) 定位。
+        if 'entries' not in dir():
+            from types import SimpleNamespace
+            entries = [SimpleNamespace(class_name=s.class_name,
+                                       experiment_id=experiment_id)
+                       for s in submissions]
+        applied = self._apply_manual_overrides(
+            grading_results, entries, self.config.semester)
+        if applied:
+            print(f"  已应用教师调分: {applied} 人")
 
         print()
 

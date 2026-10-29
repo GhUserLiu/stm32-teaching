@@ -93,7 +93,7 @@
 
   "reference_answers": {
     "submission": "每次小任务：1份实验报告(.docx) + 1份源码zip（Makefile+common-f1 工程形态）",
-    "pin_map_hint": "统一见接线方案：DHT11=PB12 热敏=PA6 光敏=PA4 OLED=PB6/PB7 蜂鸣器=PC2 TB6612=PB0/PB1/PA8"
+    "pin_map_hint": "统一见接线方案：DHT11=PB12 热敏=PA6 光敏=PA4 OLED=PB6/PB7 蜂鸣器=PB5 TB6612=PB0/PB1/PA8"
   },
 
   "common_issues": [

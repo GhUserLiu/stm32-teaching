@@ -229,6 +229,8 @@ class DataSourcePanel(QWidget):
 
     def _repopulate_ctypes(self, select: str = ""):
         """按当前学期重填课程类型下拉（学期模板 type 声明；空则内置两常项）。"""
+        if not hasattr(self, "ctype_combo"):
+            return                      # 构造期（类型框未建）由创建方自行初始化
         from tools.teaching_management_gui.path_helper import list_course_types
         sem = self.semester_edit.currentText() or None
         types = list_course_types(sem) or ["理实一体课", "整周实训"]
