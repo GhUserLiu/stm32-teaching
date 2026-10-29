@@ -134,7 +134,7 @@
     "system_arch": "感知层（DHT11/光敏/热敏）→ 决策层（阈值+滞回控制）→ 执行层（风扇PWM/蜂鸣器/LED）+ 显示层（OLED/串口）",
     "control_policy": "温度滞回：升温 ≥28℃ 开风扇、降温 <26℃ 关；≥30℃ 全速；≥32℃ 过温报警；光照低于阈值开氛围灯",
     "hysteresis": "双阈值（28/26℃）避免临界温度附近风扇频繁启停（抖动）",
-    "pin_map": {"DHT11": "PB12", "光敏": "PA4(ADC1_IN4)", "热敏": "PA6(ADC1_IN6)", "OLED": "PB6=SCL PB7=SDA", "蜂鸣器": "PB5", "板载按键": "KEY1=PA0(KEY2=PC13备用)", "板载RGB": "R=PA1 G=PA2 B=PA3", "TB6612": "AIN1=PB0 AIN2=PB1 PWMA=PA8", "串口": "PA9/PA10 115200(外接CH340线,交叉)"}
+    "pin_map": {"DHT11": "PB12", "光敏": "PA4(ADC1_IN4)", "热敏": "PA6(ADC1_IN6)", "OLED": "PB6=SCL PB7=SDA", "蜂鸣器": "PB5", "板载按键": "KEY1=PA0(KEY2=PC13备用)", "板载RGB": "R=PA1 G=PA2 B=PA3", "TB6612": "AIN1=PB0 AIN2=PB1 PWMA=PA8", "串口": "PA9/PA10 115200(板载Type-C,查跳线帽)"}
   },
 
   "common_issues": [

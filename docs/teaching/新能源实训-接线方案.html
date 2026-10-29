@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>智能座舱温控系统 · 接线方案（野火小智 STM32F103C8T6 初款核心板）</title>
+<title>智能座舱温控系统 · 接线方案（野火小智 STM32F103C8T6 双USB款核心板）</title>
 <style>
   :root { --ink:#1a2b4a; --accent:#0f6db3; --warn:#c0392b; --ok:#1e7d43; --bg:#f6f8fb; }
   * { box-sizing:border-box; }
@@ -32,7 +32,7 @@
 
 <h1>智能座舱温控系统 · 接线方案</h1>
 <div class="meta">
-  <b>目标板</b>：野火小智 STM32F103C8T6 核心板（初款，正方形，<span class="warn">无板载 USB</span>）　
+  <b>目标板</b>：野火小智 STM32F103C8T6 核心板（<b>双 USB 款</b>，长方形，板载 USB 转串口）　
   <b>依据</b>：官方引脚分配表 + 官方例程　
   <b>代码引脚真源</b>：<span class="pin">src/common-f1/inc/board_f1.h</span><br>
   <b>原则</b>：最大化利用板载资源，<span class="warn">面包板完全不用</span>；一次接完 → 烧 <span class="pin">f1-selftest</span> → 逐项读结果
@@ -47,7 +47,7 @@
 <tr><td>SWD 调试口</td><td><span class="pin">PA13/PA14</span></td><td>DAP 四线烧录</td></tr>
 <tr><td>晶振</td><td>PD0/PD1、PC14/PC15</td><td>8MHz / 32.768K，已占用不可用</td></tr>
 </table>
-<div class="note">初款核心板<b>没有板载 USB 转串口</b>——串口通信与 ISP 下载均用套件自带的 <b>野火 USB 转 TTL 线（CH340）</b>，见 §2 第 7 组。</div>
+<div class="note">板载 <b>Type-C 即 USB 转串口</b>（PA9/PA10 跳线帽连接）——直连电脑即收发；套件 TTL 线仅作备用。</div>
 
 <h2>2. 外接模块（杜邦线直插，共 7 组）</h2>
 <table>
@@ -58,10 +58,10 @@
 <tr><td>4</td><td>光敏模块</td><td>VCC→3.3V，GND→GND，<b>AO</b>→<span class="pin">PA4</span>（不是 DO！）</td><td>3</td></tr>
 <tr><td>5</td><td>热敏模块</td><td>VCC→3.3V，GND→GND，<b>AO</b>→<span class="pin">PA6</span>（不是 DO！）</td><td>3</td></tr>
 <tr><td>6</td><td>TB6612FNG + 电机风扇</td><td>VCC→3.3V，<b>STBY→3.3V</b>，GND→GND，AIN1→<span class="pin">PB0</span>，AIN2→<span class="pin">PB1</span>，PWMA→<span class="pin">PA8</span>；VM→<b>扩展板电源 5V</b>（GND 共地）；<b>有刷小马达两极→AO1/AO2</b>（<b>风扇叶提前装到马达轴上</b>，无正负之分）</td><td>8+2</td></tr>
-<tr><td>7</td><td><b>USB 转 TTL（CH340）</b></td><td><b>线的 RXD→PA9、TXD→PA10、GND→GND</b>（线的 VCC 不接或接 5V 供电脚）；USB 端连电脑</td><td>3</td></tr>
+<tr><td>7</td><td>串口</td><td><b>板载 Type-C 直连电脑即可，无需接线</b>（查 PA9/PA10 跳线帽）；套件 CH340 TTL 线备用（TX/RX 交叉）</td><td>0</td></tr>
 </table>
 <div class="note">LED 用板载 RGB、按键用板载 KEY1 —— <span class="ok">五色灯珠、按键、面包板本次全部不用。</span><br>
-串口交叉记法：<span class="warn">线的 TX 接板的 RX，线的 RX 接板的 TX（TX↔RX 交叉）</span>。</div>
+串口命脉：<span class="warn">PA9/PA10 跳线帽在位</span>——不通第一查。</div>
 
 <h2>3. 烧录与供电</h2>
 <ul>
@@ -90,7 +90,7 @@
 
 <h2>5. 上电前检查单（逐项打勾）</h2>
 <ul>
-<li>☐ CH340 线 TX/RX <b>交叉</b>接到 PA10/PA9（最常见错误：没交叉）</li>
+<li>☐ PA9/PA10 <b>跳线帽在位</b>（板载串口命脉）</li>
 <li>☐ TB6612：STBY=3.3V、VCC=3.3V、VM=扩展板电源 5V</li>
 <li>☐ 扩展板电源 GND 与核心板 GND 已共地</li>
 <li>☐ 光敏/热敏接 <b>AO</b> 模拟输出脚（DO 是数字阈值输出，接了恒 0/4095）</li>
@@ -102,7 +102,7 @@
 <h2>6. 故障速查</h2>
 <table>
 <tr><th>现象</th><th>先查</th></tr>
-<tr><td>串口无输出/乱码</td><td>TX/RX 是否交叉；波特率 115200；CH340 驱动（设备管理器看 COM 号）</td></tr>
+<tr><td>串口无输出/乱码</td><td>PA9/PA10 跳线帽；波特率 115200；CH340 驱动（设备管理器看 COM 号）</td></tr>
 <tr><td>板载灯不闪</td><td>LED_ACTIVE_LOW 极性宏（board_f1.h，共阳/共阴对调）</td></tr>
 <tr><td>KEY 无反应</td><td>按的是板载 KEY1（PA0），不是 KEY2</td></tr>
 <tr><td>OLED 全黑</td><td>SCL/SDA 接反；地址 0x3C；换模块</td></tr>
@@ -121,9 +121,8 @@
         PB12 ←─ DHT11 DATA       PB6 ── OLED SCL   PB7 ── OLED SDA
         PA4 ←── 光敏 AO          PA6 ←── 热敏 AO
         PB0 ── TB6612 AIN1       PB1 ── TB6612 AIN2
-        PA8 ──→ TB6612 PWMA      PA9(TX) ←── CH340线RXD
-                                 PA10(RX) ←─ CH340线TXD   （TX/RX 交叉）
- GND ───┴── 所有模块 GND ── TB6612 GND ── 扩展板电源 GND ── CH340线GND ── DAP GND
+        PA8 ──→ TB6612 PWMA      PA9/PA10 ──(跳线帽)── 板载CH340 ── Type-C
+ GND ───┴── 所有模块 GND ── TB6612 GND ── 扩展板电源 GND ── DAP GND
  扩展板 5V(+) ── TB6612 VM ── AO1/AO2 ── 小马达（轴上装风扇叶，转向反了交换两线）</div>
 
 <footer>
