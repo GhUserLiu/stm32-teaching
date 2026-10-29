@@ -149,6 +149,23 @@ class MainWindow(QMainWindow):
 
         # 4. 创建并添加各个面板
         self.create_panels()
+        self._disable_combo_wheel()   # 滚轮不再误改下拉选项
+
+    def _disable_combo_wheel(self):
+        """屏蔽所有下拉框的鼠标滚轮（防止滑轮滑过时误切选项）。"""
+        from PyQt6.QtWidgets import QComboBox
+        from PyQt6.QtCore import QObject, QEvent
+
+        class _WheelBlocker(QObject):
+            def eventFilter(self, obj, ev):
+                if ev.type() == QEvent.Type.Wheel and isinstance(obj, QComboBox):
+                    ev.ignore()
+                    return True
+                return False
+
+        self._combo_wheel_filter = _WheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._combo_wheel_filter)
 
     def create_sidebar(self):
         """创建侧边栏导航"""
