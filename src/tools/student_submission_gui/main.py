@@ -45,6 +45,14 @@ def main():
         except (AttributeError, OSError):
             pass
 
+    # 授权校验（网络时间优先/防回拨/到期退出）——2026-10 课程组要求
+    from tools.student_submission_gui.license import check_license
+    from tools.student_submission_gui.qt_compat import QMessageBox
+    ok, msg = check_license()
+    if not ok:
+        QMessageBox.critical(None, "授权提示", msg)
+        sys.exit(1)
+
     window = MainWindow()
     window.show()
     sys.exit(exec_app(app))
