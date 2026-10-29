@@ -19,6 +19,38 @@ from PyQt6.QtCore import Qt
 from tools.teaching_management_gui.ui.main_window import MainWindow
 
 
+def _seed_portable_data():
+    """打包 exe 首启：把 _internal 内的种子数据（config/ 与 data/）拷到 exe 旁。
+
+    便携式布局：exe 根目录的 config/、data/ 为工作副本（可编辑、可写入成绩），
+    升级时替换整个文件夹即可保留用户数据。源码运行时是空操作。
+    """
+    import sys as _sys
+    if not getattr(_sys, "frozen", False):
+        return
+    import shutil
+    exe_root = Path(_sys.executable).resolve().parent
+    internal = exe_root / "_internal"
+    if not internal.exists():
+        return
+    for name in ("config", "data"):
+        src = internal / name
+        dst = exe_root / name
+        if not src.exists():
+            continue
+        if not dst.exists():
+            shutil.copytree(src, dst)
+        else:
+            # 逐文件补齐（不覆盖已有，保护教师已改的模板/已产生的成绩）
+            for p in src.rglob("*"):
+                if p.is_file():
+                    rel = p.relative_to(src)
+                    target = dst / rel
+                    if not target.exists():
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(p, target)
+
+
 def main():
     """主函数"""
     # 关键修复：在创建QApplication之前设置高DPI属性
@@ -53,4 +85,5 @@ def main():
 
 
 if __name__ == '__main__':
+    _seed_portable_data()
     main()

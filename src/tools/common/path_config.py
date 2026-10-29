@@ -10,9 +10,17 @@ Unified Path Configuration for Teaching System
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
+
+# 项目根目录（冻结感知）：源码运行 = 仓库根；打包 exe = exe 所在目录（便携式数据树）。
+# 供界面记忆(.student_ui_state/.teacher_ui_state)等需要根路径的调用方使用。
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 @dataclass
@@ -201,8 +209,12 @@ def get_teaching_paths(project_root: Optional[Path] = None) -> TeachingPaths:
         TeachingPaths 实例
     """
     if project_root is None:
-        # 自动检测项目根目录
-        project_root = Path(__file__).parent.parent.parent.parent
+        # 自动检测项目根目录（打包 exe 时 = exe 所在目录，便携式数据树随包走）
+        import sys
+        if getattr(sys, "frozen", False):
+            project_root = Path(sys.executable).resolve().parent
+        else:
+            project_root = Path(__file__).resolve().parents[3]
     return TeachingPaths(project_root=project_root)
 
 

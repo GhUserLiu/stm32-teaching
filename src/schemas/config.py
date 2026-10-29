@@ -35,7 +35,12 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # repo-root/config  (src/schemas/config.py -> parents[2] = repo root)
-CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
+import sys
+if getattr(sys, "frozen", False):
+    # 打包 exe：根=exe 所在目录（与 tools/common/path_config 的冻结检测一致）
+    CONFIG_DIR = Path(sys.executable).resolve().parent / "config"
+else:
+    CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 
 ENV_PREFIX = "APP_"
 ENV_SEP = "__"
