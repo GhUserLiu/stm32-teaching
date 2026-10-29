@@ -70,12 +70,25 @@ def stage_datas():
                     json.dumps(sanitize_rubric(data), ensure_ascii=False, indent=1),
                     encoding="utf-8")
 
-    # 3) 学生端全局配置
+    # 3) 学生端全局配置（剥离已冻结的 experiments/classes 段——包内实验清单
+    #    唯一真源 = data/semesters/<学期>/experiments.yaml，避免新旧两份清单）
     cfg_dst = STAGE / "data" / "config" / "teaching"
     cfg_dst.mkdir(parents=True)
-    shutil.copy(ROOT / "data" / "config" / "teaching" / "config.yaml",
-                cfg_dst / "config.yaml")
+    _strip_legacy_config(ROOT / "data" / "config" / "teaching" / "config.yaml",
+                         cfg_dst / "config.yaml")
     print(f"staged -> {STAGE}")
+
+
+def _strip_legacy_config(src: Path, dst: Path):
+    import yaml
+    data = yaml.safe_load(src.read_text(encoding="utf-8")) or {}
+    removed = [k for k in ("experiments", "classes") if k in data]
+    for k in removed:
+        data.pop(k)
+    header = ("# 打包版说明：experiments/classes 段已剥离（历史冻结，仅源码回退用）。\n"
+              "# 实验清单唯一真源 = data/semesters/<学期>/experiments.yaml\n")
+    dst.write_text(header + yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+                   encoding="utf-8")
 
 
 def write_license_data(expiry: str):

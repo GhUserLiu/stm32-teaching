@@ -1,7 +1,12 @@
 # 教学管理工具统一配置文件
 # Teaching Management System Configuration
+#
+# ⚠ 冻结声明（2026-10 结构统一）：experiments / classes 两段为历史遗留，仅供
+#    源码运行且无学期模板时回退，**不再维护**。实验清单唯一真源：
+#    data/semesters/<学期>/experiments.yaml（新实验一律加在那里）。
+#    打包脚本（build_student_package / build_teacher_package）会自动剥离这两段。
 
-# 实验配置
+# 实验配置【已冻结·勿更新】
 experiments:
   07-car-gear:
     name: "汽车档位模拟器设计"

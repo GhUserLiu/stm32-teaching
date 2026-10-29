@@ -25,7 +25,17 @@ def stage_datas():
             shutil.copytree(src, STAGE / "data" / sub)
     cfg = STAGE / "data" / "config" / "teaching"
     cfg.mkdir(parents=True)
-    shutil.copy(ROOT / "data" / "config" / "teaching" / "config.yaml", cfg / "config.yaml")
+    # 剥离已冻结的 experiments/classes 段（包内唯一真源 = 学期模板，与学生端一致）
+    import yaml
+    _cfg_src = ROOT / "data" / "config" / "teaching" / "config.yaml"
+    _data = yaml.safe_load(_cfg_src.read_text(encoding="utf-8")) or {}
+    for k in ("experiments", "classes"):
+        _data.pop(k, None)
+    (cfg / "config.yaml").write_text(
+        "# 打包版说明：experiments/classes 段已剥离（历史冻结）。\n"
+        "# 实验清单唯一真源 = data/semesters/<学期>/experiments.yaml\n"
+        + yaml.safe_dump(_data, allow_unicode=True, sort_keys=False),
+        encoding="utf-8")
     # config：统一配置层 base.yaml
     shutil.copytree(ROOT / "config", STAGE / "config",
                     ignore=shutil.ignore_patterns("__pycache__"))

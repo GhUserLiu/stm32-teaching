@@ -91,20 +91,11 @@ class DataSourcePanel(QWidget):
         self.major_combo.lineEdit().editingFinished.connect(self._on_major_changed)
         sem_layout.addWidget(self.major_combo, 1)
 
-        # 课程类型（理实一体课 / 整周实训；记忆上次选择）
+        # 课程类型（与学生端统一：从学期模板读取，随学期联动；记忆上次选择）
         sem_layout.addWidget(QLabel("课程类型:"))
         self.ctype_combo = QComboBox()
         self.ctype_combo.setEditable(True)
-        for t in ("理实一体课", "整周实训"):
-            self.ctype_combo.addItem(t)
-        _ct = _st.get("course_type", "")
-        if _ct:
-            i = self.ctype_combo.findText(_ct)
-            if i >= 0:
-                self.ctype_combo.setCurrentIndex(i)
-            else:
-                self.ctype_combo.insertItem(0, _ct)
-                self.ctype_combo.setCurrentText(_ct)
+        self._repopulate_ctypes(select=_st.get("course_type", ""))
         self.ctype_combo.currentIndexChanged.connect(self._save_teacher_ui_state)
         self.ctype_combo.lineEdit().editingFinished.connect(self._save_teacher_ui_state)
         sem_layout.addWidget(self.ctype_combo, 1)
@@ -233,6 +224,27 @@ class DataSourcePanel(QWidget):
             if i >= 0:
                 self.major_combo.setCurrentIndex(i)
         self.major_combo.blockSignals(False)
+        # 学期切换后课程类型列表也可能变化（与学生端同源）
+        self._repopulate_ctypes(select=self._load_teacher_ui_state().get("course_type", ""))
+
+    def _repopulate_ctypes(self, select: str = ""):
+        """按当前学期重填课程类型下拉（学期模板 type 声明；空则内置两常项）。"""
+        from tools.teaching_management_gui.path_helper import list_course_types
+        sem = self.semester_edit.currentText() or None
+        types = list_course_types(sem) or ["理实一体课", "整周实训"]
+        self.ctype_combo.blockSignals(True)
+        self.ctype_combo.clear()
+        self.ctype_combo.addItem("全部")
+        for t in types:
+            self.ctype_combo.addItem(t)
+        if select and select != "全部":
+            i = self.ctype_combo.findText(select)
+            if i >= 0:
+                self.ctype_combo.setCurrentIndex(i)
+            else:
+                self.ctype_combo.insertItem(1, select)
+                self.ctype_combo.setCurrentText(select)
+        self.ctype_combo.blockSignals(False)
 
     def _on_major_changed(self):
         st = self._load_teacher_ui_state()
