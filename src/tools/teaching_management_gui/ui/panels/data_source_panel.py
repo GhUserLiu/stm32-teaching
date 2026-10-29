@@ -61,11 +61,12 @@ class DataSourcePanel(QWidget):
         # 学期（下拉，取自学期模板 data/semesters/；记忆上次选择）
         sem_layout = QHBoxLayout()
         sem_layout.addWidget(QLabel("学期:"))
-        from tools.teaching_management_gui.path_helper import list_semesters
+        from tools.teaching_management_gui.path_helper import list_semesters, list_majors
+        _st = self._load_teacher_ui_state()
         self.semester_edit = QComboBox()
         self.semester_edit.setEditable(True)          # 允许手输新学期名（自动建模板的场景）
         _sems = list_semesters()
-        cur_sem = self._load_teacher_ui_state().get("semester", "") or shared().semester()
+        cur_sem = _st.get("semester", "") or shared().semester()
         for s in _sems:
             self.semester_edit.addItem(s)
         if cur_sem:
@@ -81,20 +82,35 @@ class DataSourcePanel(QWidget):
         self.semester_edit.lineEdit().editingFinished.connect(self._on_semester_changed)
         sem_layout.addWidget(self.semester_edit, 1)
 
+        # 专业（与学生端统一；同学期不同专业实验集可不同，记忆上次选择）
+        sem_layout.addWidget(QLabel("专业:"))
+        self.major_combo = QComboBox()
+        self.major_combo.setEditable(True)
+        self._repopulate_majors(select=_st.get("major", {}).get(self.semester_edit.currentText(), ""))
+        self.major_combo.currentIndexChanged.connect(self._on_major_changed)
+        self.major_combo.lineEdit().editingFinished.connect(self._on_major_changed)
+        sem_layout.addWidget(self.major_combo, 1)
+
         # 课程类型（理实一体课 / 整周实训；记忆上次选择）
         sem_layout.addWidget(QLabel("课程类型:"))
         self.ctype_combo = QComboBox()
         self.ctype_combo.setEditable(True)
         for t in ("理实一体课", "整周实训"):
             self.ctype_combo.addItem(t)
-        self._restore_teacher_ui_state()
+        _ct = _st.get("course_type", "")
+        if _ct:
+            i = self.ctype_combo.findText(_ct)
+            if i >= 0:
+                self.ctype_combo.setCurrentIndex(i)
+            else:
+                self.ctype_combo.insertItem(0, _ct)
+                self.ctype_combo.setCurrentText(_ct)
         self.ctype_combo.currentIndexChanged.connect(self._save_teacher_ui_state)
         self.ctype_combo.lineEdit().editingFinished.connect(self._save_teacher_ui_state)
         sem_layout.addWidget(self.ctype_combo, 1)
-        sem_layout.addStretch()
         v.addLayout(sem_layout)
 
-        # 添加 / 清空 按钮
+        # 添加 / 清空 / 开始批阅（唯一批阅入口：跑完批阅自动接查重）
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("📂 添加班级压缩包（可多选）")
         self.add_btn.setMinimumHeight(36)
@@ -111,6 +127,19 @@ class DataSourcePanel(QWidget):
         self.clear_btn.clicked.connect(self.clear_all)
         btn_layout.addWidget(self.clear_btn)
         btn_layout.addStretch()
+
+        self.start_grading_btn = QPushButton("🚀 开始批阅")
+        self.start_grading_btn.setMinimumHeight(36)
+        self.start_grading_btn.setToolTip(
+            "批阅全部已选班级 → 自动查重 → 出分数与相似对（结果在「② 批阅与查重」页）")
+        self.start_grading_btn.setStyleSheet(
+            "QPushButton{background-color:#27ae60;color:white;font-weight:bold;"
+            "border-radius:5px;padding:6px 20px;}"
+            "QPushButton:hover{background-color:#2ecc71;}"
+            "QPushButton:disabled{background-color:#bdc3c7;}"
+        )
+        self.start_grading_btn.clicked.connect(self._start_grading_from_source)
+        btn_layout.addWidget(self.start_grading_btn)
         v.addLayout(btn_layout)
 
         hint = QLabel("提示：可一次选择多个班的压缩包；班级与实验会自动解析，"
@@ -155,9 +184,13 @@ class DataSourcePanel(QWidget):
             class_name, _strict = parse_class_experiment_from_zip(stem)
             exp_id = match_experiment(stem)
             if not exp_id:
-                # 取不到时用第一个已知实验作默认
-                choices = experiment_choices()
-                exp_id = choices[0][0] if choices else ""
+                # 取不到时按当前 学期/专业/类型 过滤取第一项作默认
+                sem, major, ctype = self._current_filter()
+                from tools.teaching_management_gui.path_helper import load_experiments
+                exps = load_experiments(sem or None,
+                                        None if major in ("", "全部") else major,
+                                        None if ctype in ("", "全部") else ctype)
+                exp_id = exps[0]["id"] if exps else ""
             self._append_row(class_name or stem, exp_id, p)
         self._sync_to_shared()
         self.log_added(paths)
@@ -181,7 +214,54 @@ class DataSourcePanel(QWidget):
     def _on_semester_changed(self):
         shared().set_semester(self.semester_edit.currentText().strip())
         self._save_teacher_ui_state()
+        # 学期切换 → 重填专业列表
+        st = self._load_teacher_ui_state()
+        self._repopulate_majors(select=st.get("major", {}).get(
+            self.semester_edit.currentText(), ""))
         self._refresh_status()
+
+    def _repopulate_majors(self, select: str = ""):
+        """按当前学期重填专业下拉（学期模板 majors 声明）。"""
+        from tools.teaching_management_gui.path_helper import list_majors
+        self.major_combo.blockSignals(True)
+        self.major_combo.clear()
+        self.major_combo.addItem("全部")
+        for m in list_majors(self.semester_edit.currentText() or None):
+            self.major_combo.addItem(m)
+        if select:
+            i = self.major_combo.findText(select)
+            if i >= 0:
+                self.major_combo.setCurrentIndex(i)
+        self.major_combo.blockSignals(False)
+
+    def _on_major_changed(self):
+        st = self._load_teacher_ui_state()
+        st.setdefault("major", {})[self.semester_edit.currentText()] = \
+            self.major_combo.currentText()
+        self._save_state_dict(st)
+        self._refresh_status()
+
+    def _current_filter(self):
+        """(学期, 专业, 课程类型) 当前选择，供实验默认匹配。"""
+        return (self.semester_edit.currentText().strip(),
+                self.major_combo.currentText().strip(),
+                self.ctype_combo.currentText().strip())
+
+    def _start_grading_from_source(self):
+        """数据源页「开始批阅」：跳到②页并执行 批阅→查重 一键链。"""
+        win = self.window()
+        gp = getattr(win, "grading_panel", None)
+        if gp is None:
+            return
+        if not shared().entries():
+            QMessageBox.warning(self, "提示", "请先添加班级压缩包")
+            return
+        if gp.is_grading or (gp.grading_worker is not None
+                             and gp.grading_worker.isRunning()):
+            QMessageBox.information(self, "请稍候", "上一次批阅仍在进行中。")
+            return
+        win.nav_list.setCurrentRow(1)
+        gp.start_grading(one_click=True)
 
     # ---- 教师端界面记忆（学期/课程类型，一次选择下次直进） ----
     _TEACHER_STATE = None  # 延迟求路径
@@ -215,13 +295,19 @@ class DataSourcePanel(QWidget):
                 self.ctype_combo.setCurrentText(ct)
 
     def _save_teacher_ui_state(self):
+        st = self._load_teacher_ui_state()
+        st["semester"] = self.semester_edit.currentText().strip()
+        st["course_type"] = self.ctype_combo.currentText().strip()
+        if hasattr(self, "major_combo"):
+            st.setdefault("major", {})[st["semester"]] = \
+                self.major_combo.currentText().strip()
+        self._save_state_dict(st)
+
+    def _save_state_dict(self, st: dict):
         try:
             import json
             p = self._teacher_state_path()
             p.parent.mkdir(parents=True, exist_ok=True)
-            st = self._load_teacher_ui_state()
-            st["semester"] = self.semester_edit.currentText().strip()
-            st["course_type"] = self.ctype_combo.currentText().strip()
             p.write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
         except Exception:
             pass

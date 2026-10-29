@@ -23,8 +23,10 @@ for i in range(w.nav_list.count()):
 dsp, gp, pp = w.data_source_panel, w.grading_panel, w.plagiarism_panel
 checks = {
     '学期下拉': hasattr(dsp, 'semester_edit'),
+    '专业下拉': hasattr(dsp, 'major_combo'),
+    '开始批阅按钮(数据源页)': hasattr(dsp, 'start_grading_btn'),
     '类型下拉': hasattr(dsp, 'ctype_combo'),
-    '一键按钮': hasattr(gp, 'one_click_btn'),
+    '一键按钮': getattr(gp, 'one_click_btn', None) is None,
     '结果表': hasattr(gp, 'results_table'),
     '调分对话框方法': hasattr(gp, '_open_adjust_dialog'),
     '查重小按钮': hasattr(pp, 'start_btn'),

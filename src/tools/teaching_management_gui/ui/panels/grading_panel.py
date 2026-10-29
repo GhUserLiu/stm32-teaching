@@ -78,43 +78,19 @@ class GradingPanel(QWidget):
         row.addWidget(go_btn)
         layout.addLayout(row)
 
-        self.start_btn = QPushButton("开始批阅（全部班级）")
-        self.start_btn.setMinimumHeight(40)
-        self.start_btn.setStyleSheet("""
-            QPushButton { background-color: #4CAF50; color: white; font-size: 14px;
-                font-weight: bold; border-radius: 5px; padding: 8px 16px; }
-            QPushButton:hover { background-color: #45a049; }
-            QPushButton:disabled { background-color: #cccccc; }
-        """)
-        self.start_btn.clicked.connect(self.start_grading)
-
-        # 一键流水线：批阅 → 查重（教师端只出分数；详细反馈由学生端自检自行获得）
-        self.one_click_btn = QPushButton("🚀 一键：批阅→查重")
-        self.one_click_btn.setMinimumHeight(40)
-        self.one_click_btn.setToolTip(
-            "依次执行：批阅全部班级 → 查重，直接出分数与相似对。\n"
-            "详细改进反馈由学生端自检获得，教师端不再生成个人反馈文档。")
-        self.one_click_btn.setStyleSheet("""
-            QPushButton { background-color: #1565C0; color: white; font-size: 14px;
-                font-weight: bold; border-radius: 5px; padding: 8px 16px; }
-            QPushButton:hover { background-color: #0D47A1; }
-            QPushButton:disabled { background-color: #cccccc; }
-        """)
-        self.one_click_btn.clicked.connect(lambda: self.start_grading(one_click=True))
+        # 批阅入口已上移至「① 数据源」页（🚀 开始批阅）；本页仅保留取消。
+        self.start_btn = None            # 兼容旧引用：入口移除
+        self.one_click_btn = None
         self._one_click_chain = False
 
-        self.cancel_btn = QPushButton("取消")
-        self.cancel_btn.setMinimumHeight(40)
+        self.cancel_btn = QPushButton("取消批阅")
+        self.cancel_btn.setMinimumHeight(32)
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_grading)
-
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        btn_row.addWidget(self.one_click_btn)
-        btn_row.addWidget(self.start_btn)
-        btn_row.addWidget(self.cancel_btn)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
+        row2 = QHBoxLayout()
+        row2.addStretch()
+        row2.addWidget(self.cancel_btn)
+        layout.addLayout(row2)
 
         group.setLayout(layout)
         return group
@@ -214,13 +190,20 @@ class GradingPanel(QWidget):
         if not entries:
             self.ds_status.setText("⚠ 尚未选择班级压缩包。请到「数据源」页选择（可多选）。")
             self.ds_status.setStyleSheet("color:#c0392b;font-weight:bold;")
-            self.start_btn.setEnabled(False)
+            self._sync_start_btn(False)
         else:
             names = "、".join(e.class_name for e in entries)
             self.ds_status.setText(f"✓ 已选 {len(entries)} 个班级：{names}")
             self.ds_status.setStyleSheet("color:#27ae60;font-weight:bold;")
-            self.start_btn.setEnabled(not self.is_grading)
+            self._sync_start_btn(not self.is_grading)
 
+
+    def _sync_start_btn(self, enabled: bool):
+        """批阅入口在「① 数据源」页：同步其按钮可用态。"""
+        btn = getattr(getattr(self.window(), "data_source_panel", None),
+                      "start_grading_btn", None)
+        if btn is not None:
+            btn.setEnabled(enabled)
     def _goto_data_source(self):
         win = self.window()
         if hasattr(win, "nav_list"):
@@ -308,7 +291,7 @@ class GradingPanel(QWidget):
             return  # 用户在续跑提示框点了「取消」
 
         self.is_grading = True
-        self.start_btn.setEnabled(False)
+        self._sync_start_btn(False)
         self.cancel_btn.setEnabled(True)
         self.log_text.clear()
         self.results_table.setRowCount(0)
@@ -348,7 +331,7 @@ class GradingPanel(QWidget):
         self.all_results = results or []
         self.all_failures = failures or []
         self.is_grading = False
-        self.start_btn.setEnabled(True)
+        self._sync_start_btn(True)
         self.cancel_btn.setEnabled(False)
         self.overall_progress.setValue(self.overall_progress.maximum())
         self.detail_label.setText("批阅完成")
@@ -414,7 +397,7 @@ class GradingPanel(QWidget):
 
     def on_grading_failed(self, error_message):
         self.is_grading = False
-        self.start_btn.setEnabled(True)
+        self._sync_start_btn(True)
         self.cancel_btn.setEnabled(False)
         self.detail_label.setText("批阅失败")
         self.log(f"批阅失败: {error_message}")
@@ -422,7 +405,7 @@ class GradingPanel(QWidget):
 
     def on_grading_cancelled(self):
         self.is_grading = False
-        self.start_btn.setEnabled(True)
+        self._sync_start_btn(True)
         self.cancel_btn.setEnabled(False)
         self.detail_label.setText("批阅已取消")
         self.log("批阅已取消（已评部分已保存为 checkpoint，下次「开始批阅」可续跑）")
