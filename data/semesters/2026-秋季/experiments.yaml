@@ -1,96 +1,102 @@
-# 2026-秋季学期实验清单（按专业区分；年度教学任务变化时只改本文件与同目录 rubrics/）
-# 专业（三个）：汽服、新能源、智能网联汽车
-# 课程类型（两种）：理实一体课 / 整周实训
+# 2026-秋季学期实验清单
+# ============================================================
+# 实验 ID 编码规范（正式序列，2026-10 课程组定）：
+#   <学期码>-<类型码>-<专业码>-<序号>
+#   学期码: 2026S=2026春 / 2026F=2026秋（随学期递增：2027S、2027F…）
+#   类型码: LT=理实一体课 / PT=整周实训
+#   专业码: NEV=新能源 / SV=汽服 / ICV=智能网联汽车 / GEN=跨专业共享
+#   序号:   00=总项目(期末) / 01..=分节次任务
+# 示例：2026F-PT-NEV-02 = 2026秋·整周实训·新能源·任务2
+# 新学期：复制本文件夹改名，按上述规则重编 ID 与本文件；rubric 文件名不必与
+# ID 同名（yaml 的 rubric: 字段指定路径即可）。
+# 注意：2026-春季为历史学期（旧 ID 07-car-gear/final-project 冻结，勿改）。
 # majors 不写 = 全专业通用；type 不写 = 不限类型。
-#
-# 新能源实训 = 8 个分节次小任务（共用 rubrics/08-task.json 通用标准）+ 1 个总项目（专项标准）。
-# 小任务条目 = 每次课的作业：1 份实验报告(.docx) + 1 份源码 zip；教师端逐任务批阅出分。
+# ============================================================
 
 experiments:
-  # ---- 新能源实训 · 分节次小任务 ----
-  08-t01-uart-printf:
-    name: "任务1：串口printf调试输出（UART）"
-    code: "08_task_uart"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(二)1~2；产出：日志2 + 数据记录表"
-
-  08-t02-dht11:
-    name: "任务2：DHT11温湿度采集"
-    code: "08_task_dht11"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(三)1~2；产出：数据记录表"
-
-  08-t03-ntc-adc:
-    name: "任务3：热敏电阻温度采集（ADC）"
-    code: "08_task_ntc"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(三)3~4；产出：日志3（含与DHT11对照定标）"
-
-  08-t04-light:
-    name: "任务4：光敏传感器采集"
-    code: "08_task_light"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(三)5~6"
-
-  08-t05-oled:
-    name: "任务5：OLED显示驱动（I2C）"
-    code: "08_task_oled"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(四)1~2；产出：日志4"
-
-  08-t06-pwm-fan:
-    name: "任务6：TB6612风扇调速（PWM）"
-    code: "08_task_fan"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(四)3~6"
-
-  08-t07-breath:
-    name: "任务7：呼吸灯（PWM）"
-    code: "08_task_breath"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(五)1~2"
-
-  08-t08-ambient:
-    name: "任务8：进阶光照自适应氛围灯"
-    code: "08_task_ambient"
-    rubric: "rubrics/08-task.json"
-    majors: ["新能源"]
-    type: "整周实训"
-    description: "周1(五)3~4；产出：项目报告主体初稿"
-
-  # ---- 新能源实训 · 总项目 ----
-  08-cabin-thermal:
+  # ---- 新能源 · 整周实训（PT-NEV）----
+  2026F-PT-NEV-00:
     name: "智能座舱温控系统设计（总项目）"
-    code: "08_cabin_thermal"
+    code: "cabin_thermal"
     rubric: "rubrics/08-cabin-thermal.json"
     majors: ["新能源"]
     type: "整周实训"
     description: "两周联调总项目：1份项目报告 + 1份源码；出勤/子系统/答辩/进阶为教师实测项"
 
-  # ---- 理论课（汽服 / 智能网联汽车） ----
-  07-car-gear:
+  2026F-PT-NEV-01:
+    name: "任务1：串口printf调试输出（UART）"
+    code: "task_uart"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(二)1~2；产出：日志2 + 数据记录表"
+
+  2026F-PT-NEV-02:
+    name: "任务2：DHT11温湿度采集"
+    code: "task_dht11"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(三)1~2；产出：数据记录表"
+
+  2026F-PT-NEV-03:
+    name: "任务3：热敏电阻温度采集（ADC）"
+    code: "task_ntc"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(三)3~4；产出：日志3（含与DHT11对照定标）"
+
+  2026F-PT-NEV-04:
+    name: "任务4：光敏传感器采集"
+    code: "task_light"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(三)5~6"
+
+  2026F-PT-NEV-05:
+    name: "任务5：OLED显示驱动（I2C）"
+    code: "task_oled"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(四)1~2；产出：日志4"
+
+  2026F-PT-NEV-06:
+    name: "任务6：TB6612风扇调速（PWM）"
+    code: "task_fan"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(四)3~6"
+
+  2026F-PT-NEV-07:
+    name: "任务7：呼吸灯（PWM）"
+    code: "task_breath"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(五)1~2"
+
+  2026F-PT-NEV-08:
+    name: "任务8：进阶光照自适应氛围灯"
+    code: "task_ambient"
+    rubric: "rubrics/08-task.json"
+    majors: ["新能源"]
+    type: "整周实训"
+    description: "周1(五)3~4；产出：项目报告主体初稿"
+
+  # ---- 理实一体 · 跨专业共享（LT-GEN）----
+  2026F-LT-GEN-01:
     name: "汽车档位模拟器设计"
-    code: "07_car_gear_experiment"
+    code: "car_gear"
     rubric: "rubrics/07-car-gear.json"
     majors: ["汽服", "智能网联汽车"]
     type: "理实一体课"
-    description: "基于STM32F407的汽车档位模拟器设计与实现（理论课）"
+    description: "基于STM32F407的汽车档位模拟器设计与实现（汽服/智能网联共用）"
 
-  final-project:
+  2026F-LT-GEN-00:
     name: "期末综合项目（多功能嵌入式系统综合设计）"
     code: "final_project"
     rubric: "rubrics/final-project.json"

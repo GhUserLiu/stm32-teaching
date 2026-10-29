@@ -1,5 +1,6 @@
 # 2026-春季学期实验清单（汽服2302B班理论课）
-# 年度教学任务变化时只改本文件与同目录 rubrics/，无需改程序
+# ⚠ 历史学期：旧 ID（07-car-gear / final-project）冻结保留——该学期学生数据树按旧 ID
+# 存档，重命名会孤儿化历史成绩。正式编码规范见 2026-秋季/experiments.yaml 头注释。
 experiments:
   07-car-gear:
     name: "汽车档位模拟器设计"

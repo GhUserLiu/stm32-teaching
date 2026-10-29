@@ -8,7 +8,7 @@ sys.path.insert(0, 'src')
 ROOT = Path('.')
 SEM = '2026-秋季'
 CLS = '新能源测试班'
-EXP = '08-cabin-thermal'
+EXP = '2026F-PT-NEV-00'
 
 # 1) 构造提交目录（processor 约定布局：<学期>/<班级>/<实验>/reports + source）
 exp_dir = ROOT / 'data' / 'teaching' / SEM / CLS / EXP
