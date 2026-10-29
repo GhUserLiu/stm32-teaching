@@ -53,7 +53,7 @@
 <table>
 <tr><th>#</th><th>模块</th><th>接法</th><th>线数</th></tr>
 <tr><td>1</td><td>OLED 0.96" I2C</td><td>VCC→3.3V，GND→GND，SCL→<span class="pin">PB6</span>，SDA→<span class="pin">PB7</span></td><td>4</td></tr>
-<tr><td>2</td><td>DHT11</td><td>VCC→3.3V，GND→GND，DATA→<span class="pin">PB12</span></td><td>3</td></tr>
+<tr><td>2</td><td>DHT11</td><td>VCC→3.3V，GND→GND，<b>DATA（裸件丝印 IO）→<span class="pin">PB12</span></b>；NC 脚悬空；不稳加 4.7K~10K 上拉</td><td>3</td></tr>
 <tr><td>3</td><td>有源蜂鸣器</td><td>VCC→3.3V，GND→GND，I/O→<span class="pin">PB5</span></td><td>3</td></tr>
 <tr><td>4</td><td>光敏模块</td><td>VCC→3.3V，GND→GND，<b>AO</b>→<span class="pin">PA4</span>（不是 DO！）</td><td>3</td></tr>
 <tr><td>5</td><td>热敏模块</td><td>VCC→3.3V，GND→GND，<b>AO</b>→<span class="pin">PA6</span>（不是 DO！）</td><td>3</td></tr>
