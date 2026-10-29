@@ -16,6 +16,8 @@
 # Build Outputs
 # ========================================
 /build/
+# 学生端目录版 spec（由 scripts/build_student_package.py 生成，可再生产物）
+/build_student_dir.spec
 /bin/
 /obj/
 /out/
