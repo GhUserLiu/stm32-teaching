@@ -270,9 +270,9 @@ class FilesPanel(QWidget):
         choices = load_experiments(sem or None,
                                    None if maj in ("", "全部") else maj,
                                    None if ct in ("", "全部") else ct)
-        # load_experiments 返回 [{'id','name'}] 字典列表，逐项取键
+        # load_experiments 返回 [{'id','name'}] 字典列表；显示只留名称（id 藏于数据）
         for e in choices:
-            self.experiment_combo.addItem(f"{e['name']}（{e['id']}）", e['id'])
+            self.experiment_combo.addItem(e['name'], e['id'])
         idx = 0
         if restore:
             for i in range(self.experiment_combo.count()):
@@ -315,7 +315,7 @@ class FilesPanel(QWidget):
     def _create_action_group(self):
         w = QWidget()
         row = QHBoxLayout()
-        self.run_btn = QPushButton("🚀 开始检测与自评")
+        self.run_btn = QPushButton("开始检测")
         self.run_btn.setMinimumHeight(44)
         self.run_btn.setStyleSheet("""
             QPushButton { background-color: #16a085; color: white; font-size: 15px;

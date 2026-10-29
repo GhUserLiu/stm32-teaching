@@ -46,13 +46,13 @@ QGroupBox::title {
 }
 
 QPushButton {
-    background-color: #eef3fb; color: #1f2937;
+    background-color: #ffffff; color: #1f2937;
     border: 1px solid #c9d6ea; border-radius: 6px;
     padding: 6px 16px;
 }
-QPushButton:hover { background-color: #dfe9f9; border-color: #b8c4d4; }
-QPushButton:pressed { background-color: #cfe0f7; }
-QPushButton:disabled { color: #93a3b8; background-color: #f2f5fa; }
+QPushButton:hover { background-color: #eef4ff; border-color: #2563eb; color: #2563eb; }
+QPushButton:pressed { background-color: #dbeafe; }
+QPushButton:disabled { color: #93a3b8; background-color: #f8fafc; border-color: #e2e8f0; }
 
 QLineEdit, QComboBox {
     background-color: #ffffff;
