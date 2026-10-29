@@ -33,14 +33,12 @@
 <h2>一句话讲清</h2>
 <p><b>串口是嵌入式开发的第一调试手段</b>——程序跑在板子上，你"看不见"它，printf 就是把变量实时"说"给电脑听。</p>
 
-<h2>接线（3 根，交叉！）</h2>
+<h2>接线（免接线！）</h2>
 <table>
-<tr><th>CH340 USB 转 TTL 线</th><th>核心板</th></tr>
-<tr><td>RXD</td><td><span class="pin">PA9</span>（板 TX）</td></tr>
-<tr><td>TXD</td><td><span class="pin">PA10</span>（板 RX）</td></tr>
-<tr><td>GND</td><td>GND</td></tr>
+<p>板载 <b>Type-C 直连电脑</b>即可——PA9/PA10 已在板上经跳线帽连到 CH340，<b>无需任何接线</b>。</p>
+<p>⚠ 唯一检查项：<b>PA9/PA10 跳线帽在位</b>（串口不通第一查）。</p>
 </table>
-<div class="box"><span class="warn">最常见错误：TX/RX 没交叉。</span>记法：<b>线的 TX 接板的 RX</b>。USB 端插电脑，设备管理器看到 <code>USB-SERIAL CH340 (COMx)</code> 即驱动 OK。</div>
+<div class="box">Type-C 插电脑，设备管理器看到 <code>USB-SERIAL CH340 (COMx)</code> 即驱动 OK。<span class="warn">无输出先查 PA9/PA10 跳线帽。</span></div>
 
 <h2>三步配置（CubeMX）</h2>
 <ol>
@@ -74,7 +72,7 @@ int fputc(int ch, FILE *f)          /* Keil 用这个 */
 <h2>三个坑</h2>
 <table>
 <tr><th>现象</th><th>原因</th></tr>
-<tr><td>完全无输出</td><td>TX/RX 没交叉 / GND 没接 / COM 口选错</td></tr>
+<tr><td>完全无输出</td><td>PA9/PA10 跳线帽松脱 / COM 口选错 / 驱动未装</td></tr>
 <tr><td>乱码</td><td>波特率不匹配（双方必须同为 115200）</td></tr>
 <tr><td>输出卡顿丢字</td><td>用了阻塞发送超时太短，或在中断里 printf</td></tr>
 </table>
@@ -130,7 +128,7 @@ printf("0x%02X\r\n", reg);    // 十六进制看寄存器（调试 I2C/OLED 神�
 <li>选对 <b>COMx</b> → 点「<b>打开串口</b>」→ 按板子复位键，应立刻收到一串输出</li>
 <li>常用三键：「<b>清空</b>」（重新观察）、「<b>暂停</b>」（读屏）、「<b>保存/记录</b>」——
     <b>做数据记录表就靠保存</b>：先存成 .txt/.csv，再整理进实验报告</li>
-<li>收不到？按顺序查：COM 号选错 → TX/RX 没交叉 → 波特率不一致 → 驱动没装好</li>
+<li>收不到？按顺序查：PA9/PA10 跳线帽 → COM 号选错 → 波特率不一致 → 驱动没装好</li>
 </ol>
 
 <footer>新能源汽车工程实训（电子控制方向） · 显示层 ① 串口printf · 与联调工程 f1-day4-oled 的 UART 部分衔接</footer>

@@ -20,8 +20,8 @@
  *   MQ-135   PA5   ADC1_IN5（备用件：空气质量/烟雾；未接时应用层须关宏）
  *            （官方例程 [21-2] 的 Ir_AO 也用 PA5，互斥使用）
  *   TB6612   AIN1=PB0  AIN2=PB1  PWMA=PA8（TIM1_CH1；官方 [26] 用 PA4/5/7 与光敏冲突，故本框架另行分配，STBY 直拉 3.3V）
- *   UART1    PA9(TX) PA10(RX) 115200-8N1（外接 CH340 USB 转 TTL 线：
- *            线的 RXD→PA9、TXD→PA10、GND→GND；初款核心板无板载串口）
+ *   UART1    PA9(TX) PA10(RX) 115200-8N1（双USB款：板载 CH340，Type-C 直连，
+ *            PA9/PA10 跳线帽连接；套件外接 CH340 线仅作备用）
  */
 #ifndef BOARD_F1_H
 #define BOARD_F1_H
