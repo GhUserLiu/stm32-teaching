@@ -7,7 +7,7 @@
   "thinking_check": false,
 
   "hardware_platform": {
-    "mcu": "STM32F103C8T6（野火小智核心板）",
+    "mcu": "STM32F103C8T6（野火小智核心板·初款，详见 docs/teaching/板卡档案.md）",
     "modules": ["DHT11", "光敏 ADC", "热敏 ADC", "OLED SSD1306(I2C)", "有源蜂鸣器", "TB6612FNG+风扇", "LED", "按键"],
     "toolchain": "arm-none-eabi-gcc + make（本仓 src/common-f1 框架；机房 Keil/CubeMX 亦可）"
   },

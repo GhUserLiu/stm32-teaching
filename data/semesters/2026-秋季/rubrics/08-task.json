@@ -1,7 +1,7 @@
 {
   "experiment_name": "实训小任务通用评分标准",
   "experiment_code": "08_task",
-  "course_name": "新能源汽车工程实训（电子控制方向）",
+  "course_name": "新能源汽车工程实训（电子控制方向）",`n  "hardware_board": "野火小智 STM32F103C8T6 核心板【初款】（详见 docs/teaching/板卡档案.md）",
   "version": "1.0.0",
   "_scheme_note": "小任务（分节次作业）通用标准，合计100分：实验记录35（关键词机器评）+ 源码证据40（编译15/非阻塞5/代码质量20，机器评）+ 任务检查25（教师实测，未填自动按 25×0.8=20 预置）。总项目（08-cabin-thermal）另用专项标准。多个小任务条目共用本文件。",
   "thinking_check": false,
