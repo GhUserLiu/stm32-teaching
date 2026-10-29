@@ -29,15 +29,29 @@ _NTP_HOSTS = ["ntp.aliyun.com", "ntp.tencent.com", "pool.ntp.org"]
 _CN_TZ = timezone(timedelta(hours=8))
 
 
-def _writable_root() -> Path:
-    """防回拨记录文件所在目录（用户主目录，随包运行时可写）。"""
-    base = Path.home() / ".mcu_selfcheck"
-    try:
-        base.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        base = Path(os.environ.get("TEMP", ".")) / ".mcu_selfcheck"
-        base.mkdir(parents=True, exist_ok=True)
-    return base
+def _writable_root() -> Path or None:
+    """防回拨记录文件所在目录：多候选尝试，全部失败返回 None（降级，不抛异常）。"""
+    candidates = [
+        Path.home() / ".mcu_selfcheck",
+        Path(os.environ.get("LOCALAPPDATA", "")) / ".mcu_selfcheck"
+        if os.environ.get("LOCALAPPDATA") else None,
+        Path(os.environ.get("TEMP", "")) / ".mcu_selfcheck"
+        if os.environ.get("TEMP") else None,
+        Path.home() / "Documents" / ".mcu_selfcheck",
+        Path(".mcu_selfcheck"),                     # 进程当前目录（最后兜底）
+    ]
+    for base in candidates:
+        if base is None:
+            continue
+        try:
+            base.mkdir(parents=True, exist_ok=True)
+            probe = base / ".w"
+            probe.write_text("1", encoding="utf-8")   # 真实可写校验
+            probe.unlink(missing_ok=True)
+            return base
+        except Exception:
+            continue
+    return None        # 全部失败：放弃持久化，check_license 降级为仅日期校验
 
 
 def _http_time() -> datetime or None:
@@ -87,10 +101,12 @@ def network_time() -> tuple:
     return None, None
 
 
-def _load_last_seen() -> datetime:
-    p = _writable_root() / ".ts"
+def _load_last_seen():
+    root = _writable_root()
+    if root is None:
+        return None          # 无持久化能力 → 跳过回拨检查
     try:
-        raw = p.read_text(encoding="utf-8").strip()
+        raw = (root / ".ts").read_text(encoding="utf-8").strip()
         return datetime.fromisoformat(raw)
     except Exception:
         # 哨兵用 2000 年而非 datetime.min：后续要做减法，min 会溢出
@@ -98,14 +114,30 @@ def _load_last_seen() -> datetime:
 
 
 def _save_last_seen(now: datetime):
+    root = _writable_root()
+    if root is None:
+        return
     try:
-        p = _writable_root() / ".ts"
-        p.write_text(now.isoformat(), encoding="utf-8")
+        (root / ".ts").write_text(now.isoformat(), encoding="utf-8")
     except Exception:
         pass
 
 
 def check_license() -> tuple:
+    """启动时调用。返回 (ok, message)。
+
+    ok=False 时 message 为给用户看的原因；调用方弹窗并退出。
+    设计底线：授权模块自身的任何异常都不应挡住课程使用（fail-open），
+    防回拨等增强检查失败时只降级、不崩溃。
+    """
+    try:
+        return _check_license_impl()
+    except Exception:
+        # 授权内部异常：放行（宁可少一层防护，不能让学生端开不了）
+        return True, ""
+
+
+def _check_license_impl() -> tuple:
     """启动时调用。返回 (ok, message)。
 
     ok=False 时 message 为给用户看的原因；调用方弹窗并退出。
@@ -119,12 +151,13 @@ def check_license() -> tuple:
     else:
         now = datetime.now(_CN_TZ)          # 断网兜底：本机时间 + 防回拨
 
-    # 防回拨：本机时间若早于历史最晚记录 → 篡改
+    # 防回拨：本机时间若早于历史最晚记录 → 篡改（无持久化能力时跳过此检查）
     last = _load_last_seen()
-    if now < last - timedelta(minutes=5):   # 5 分钟容差（正常时钟微调）
-        return False, ("检测到系统时间被回拨（当前时间早于上次运行时间）。\n"
-                       "为公平起见本程序已停止运行；如属误判请联系任课教师。")
-    _save_last_seen(max(now, last))
+    if last is not None:
+        if now < last - timedelta(minutes=5):   # 5 分钟容差（正常时钟微调）
+            return False, ("检测到系统时间被回拨（当前时间早于上次运行时间）。\n"
+                           "为公平起见本程序已停止运行；如属误判请联系任课教师。")
+        _save_last_seen(max(now, last))
 
     if now > expiry:
         net_note = f"（时间来源：{src}）" if src else "（离线模式：本机时间）"
