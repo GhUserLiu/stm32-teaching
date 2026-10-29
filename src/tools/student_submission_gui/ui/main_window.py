@@ -8,6 +8,8 @@ Student Self-Check & Self-Grade Main Window
 - 提交作业：选报告 + 选源码 + 身份 + 实验 + 开始检测
 - 检测过程：完整性/规范校验结果（ValidationReport）
 - 反馈与改进：rubric 预测得分 + 失分与改进（GradingResult）
+
+实际作者：刘兆骐（对外署名：汽车工程学院单片机课程组；界面不显示个人名）
 """
 
 from ..qt_compat import (

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """学期模板存储（共享层）：两端 GUI 的实验清单/专业/课程类型统一数据源。
+（作者：刘兆骐）
 
 2026-10 结构收口：原先住在 teaching_management_gui.path_helper（教师端包），
 学生端跨包反向依赖；现下沉至 tools/common，两端同等 import。

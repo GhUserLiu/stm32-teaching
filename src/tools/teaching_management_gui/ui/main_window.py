@@ -8,6 +8,8 @@ Teaching Management System Main Window
 - 查重检测
 - 自动评分
 - 反馈生成
+
+实际作者：刘兆骐（对外署名：汽车工程学院单片机课程组；界面不显示个人名）
 """
 
 from PyQt6.QtWidgets import (
