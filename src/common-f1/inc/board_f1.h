@@ -1,15 +1,15 @@
 /**
  * @file    board_f1.h
- * @brief   野火小智 STM32F103C8T6 核心板【初款】实训套件引脚分配（板级支持包）
+ * @brief   野火小智 STM32F103C8T6 核心板【双 USB 款】实训套件引脚分配（板级支持包）
  * @author  刘兆骐（汽车工程学院单片机课程组）
  *
- * ⚠ 板型基准：见 docs/teaching/板卡档案.md（实物=初款；官方资料多为双USB款，
- *   IO 定义两版一致，板载串口部分不适用）。改引脚必须同步该档案。
+ * ⚠ 板型基准：见 docs/teaching/板卡档案.md（实物=双 USB 款，照片三验定案；
+ *   官方资料全套适用）。改引脚必须同步该档案。
  * ⚠ 封装限制：C8T6/LQFP48 的 C 口仅 PC13~PC15（PC0~PC12 不存在）。
  *
  * 引脚分配依据（官方《[野火小智]STM32F103C8核心板_双USB款_引脚分配表》）：
  *   LED      板载 RGB：LED_R=PA1 LED_G=PA2 LED_B=PA3（本框架默认用红 PA1）
- *   KEY      板载 KEY1=PA0（低电平按下）；KEY2=PC13 备用（进阶可用）
+ *   KEY      板载 KEY2=PC13（低电平按下）——KEY1=PA0 为引脚表条目、板上无此按键丝印
  *   BUZZER   PB5   高电平响（有源蜂鸣器模块）
  *           （注意：C8T6/LQFP48 的 C 口只有 PC13~PC15——PC0~PC12 物理不存在，
  *            早期方案的 PC2 因此作废，2026-10 实物核对后改 PB5）
@@ -60,13 +60,13 @@ static inline void board_led(int on)
 #endif
 }
 
-/* ---- 按键（板载 KEY1=PA0，低电平有效；KEY2=PC13 备用） ---- */
-#define KEY_PORT   GPIOA
-#define KEY_PIN    0
+/* ---- 按键（板载 KEY2=PC13，低电平有效；板上丝印标 KEY2） ---- */
+#define KEY_PORT   GPIOC
+#define KEY_PIN    13
 
 static inline void board_key_init(void)
 {
-    RCC->APB2ENR |= RCC_APB2ENR_IOPA;
+    RCC->APB2ENR |= RCC_APB2ENR_IOPC;
     gpio_init(KEY_PORT, KEY_PIN, GPIO_MODE_IN_PUPD);
     gpio_set(KEY_PORT, KEY_PIN);          /* ODR=1 → 上拉 */
 }
