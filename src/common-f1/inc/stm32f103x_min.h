@@ -13,6 +13,9 @@
 
 #include <stdint.h>
 
+/* CPU 主频（MHz）——delay/uart/timer 统一引用；HSI 调试=8，PLL 修复后改 72 */
+#define F1_CPU_FREQ_MHZ  8
+
 /* ------------------------------------------------------------------ */
 /* 基址                                                               */
 /* ------------------------------------------------------------------ */
@@ -256,7 +259,8 @@ typedef struct {
  */
 static inline void uart1_init(uint32_t baud)
 {
-    uint32_t div_x16 = (72000000u + baud / 2u) / baud;   /* 16 分频后计数 */
+    uint32_t freq = (uint32_t)F1_CPU_FREQ_MHZ * 1000000u;
+    uint32_t div_x16 = (freq + baud / 2u) / baud;
     USART1->BRR = div_x16 & 0xFFFFu;
     USART1->CR1 = USART_CR1_UE | USART_CR1_TE | USART_CR1_RE;
 }
@@ -419,31 +423,12 @@ typedef struct {
 #define EXTI ((EXTI_Type *)EXTI_BASE)
 
 /* ------------------------------------------------------------------ */
-/* 时钟初始化：HSE(8MHz 晶振) ×PLL9 = 72MHz，APB1=36MHz，ADC=12MHz      */
+/* 时钟初始化：HSI 直跑 8MHz（调试模式——PLL 切换在部分板上有 HardFault，
+ * 先用 HSI 跑通全链路，后续排查 PLL 问题后切回 72MHz）                    */
 /* ------------------------------------------------------------------ */
 static inline void sysclock_init_72m(void)
 {
-    /* FLASH 2 等待周期 + 预取 */
-    FLASH->ACR = FLASH_ACR_LATENCY_2 | FLASH_ACR_PRFTBE;
-
-    RCC->CR |= RCC_CR_HSEON;
-    while (!(RCC->CR & RCC_CR_HSERDY)) { }
-
-    /* 总线分频：AHB=72，APB1=36，APB2=72，ADC=12 */
-    RCC->CFGR = RCC_CFGR_HPRE_DIV1
-              | RCC_CFGR_PPRE1_DIV2
-              | RCC_CFGR_PPRE2_DIV1
-              | RCC_CFGR_ADCPRE_DIV6;
-
-    /* PLL：HSE 8MHz × 9 = 72MHz */
-    RCC->CFGR |= RCC_CFGR_PLLSRC_HSE | RCC_CFGR_PLLXTPRE_HSE | RCC_CFGR_PLLMUL9;
-
-    RCC->CR |= RCC_CR_PLLON;
-    while (!(RCC->CR & RCC_CR_PLLRDY)) { }
-
-    /* 切换系统时钟到 PLL */
-    RCC->CFGR = (RCC->CFGR & ~0x3u) | RCC_CFGR_SW_PLL;
-    while ((RCC->CFGR & RCC_CFGR_SWS_PLL) != RCC_CFGR_SWS_PLL) { }
+    /* HSI 是复位默认时钟（8MHz），无需配置——待 PLL 问题修复后切回 72MHz */
 }
 
 #endif /* STM32F103X_MIN_H */
