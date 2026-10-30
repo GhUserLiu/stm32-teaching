@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file    board_f1.h
  * @brief   野火小智 STM32F103C8T6 核心板【双 USB 款】实训套件引脚分配（板级支持包）
  * @author  刘兆骐（汽车工程学院单片机课程组）
@@ -60,13 +60,13 @@ static inline void board_led(int on)
 #endif
 }
 
-/* ---- 按键（板载 KEY2=PC13，低电平有效；板上丝印标 KEY2） ---- */
-#define KEY_PORT   GPIOC
-#define KEY_PIN    13
+/* ---- 按键（板载 KEY1=PA0，低电平有效；KEY2=PC13 备用——两颗丝印实物可见） ---- */
+#define KEY_PORT   GPIOA
+#define KEY_PIN    0
 
 static inline void board_key_init(void)
 {
-    RCC->APB2ENR |= RCC_APB2ENR_IOPC;
+    RCC->APB2ENR |= RCC_APB2ENR_IOPA;
     gpio_init(KEY_PORT, KEY_PIN, GPIO_MODE_IN_PUPD);
     gpio_set(KEY_PORT, KEY_PIN);          /* ODR=1 → 上拉 */
 }
